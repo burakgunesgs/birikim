@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta name="theme-color" content="#0A0A0D">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Birikim</title>
+<title>Güneş Ailesi</title>
 <meta name="robots" content="noindex">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Birikim">
+<meta name="apple-mobile-web-app-title" content="Güneş Ailesi">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -36,7 +36,8 @@
     position: sticky; top: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: space-between;
     padding: calc(16px + env(safe-area-inset-top)) 20px 10px; background: linear-gradient(var(--bg) 75%, rgba(10,10,13,0));
   }
-  .bar h1 { margin: 2px 0 0; font-size: 30px; font-weight: 750; letter-spacing: -.025em; }
+  .bar h1 { margin: 2px 0 0; font-size: 30px; font-weight: 750; letter-spacing: -.025em; display: flex; align-items: center; gap: 9px; }
+  .mark svg { display: block; width: 34px; height: 34px; }
   .sub { font-size: 12.5px; color: var(--muted); font-weight: 550; display: flex; align-items: center; gap: 6px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #FF9F0A; display: inline-block; }
   .dot.ok { background: var(--up); box-shadow: 0 0 0 3px rgba(52,209,122,.18); }
@@ -234,7 +235,8 @@
   .toast.bad { background: #3D1B19; color: #FFB4AE; }
   .setup .tabs, .setup #refresh { display: none; }
   .connect { padding: 28px 4px; }
-  .connect .ico { width: 64px; height: 64px; border-radius: 22px; background: rgba(245,196,81,.13); color: var(--gold); margin-bottom: 16px; }
+  .connect .ico { width: 72px; height: 72px; border-radius: 22px; background: rgba(245,196,81,.12); margin-bottom: 16px; }
+  .connect .ico svg { width: 46px; height: 46px; }
   .connect b { display: block; font-size: 20px; margin-bottom: 6px; }
   .connect p { color: var(--muted); margin: 0 0 18px; }
   .connect code { color: var(--text); font: inherit; font-size: 13px; word-break: break-all; }
@@ -244,7 +246,7 @@
 <header class="bar">
   <div>
     <div class="sub" id="sub"></div>
-    <h1 id="title">Birikim</h1>
+    <h1><span class="mark" id="mark"></span><span id="title">Güneş Ailesi</span></h1>
   </div>
   <button class="icon-btn" id="refresh" aria-label="Yenile"></button>
 </header>
@@ -274,19 +276,22 @@
  *
  * Two ways to run. Served by Apps Script: the template fills in the key and the data (BOOT), so the page draws at
  * once, and calls go through google.script.run. The copy on GitHub Pages (build-app.sh) has these null: it calls
- * the web app over the network (api_ and doPost in Code.gs), with its address and key kept on the phone, given once
- * in the link (#u=...&k=...) or pasted in, and draws from the data it kept last time.
+ * the web app over the network (api_ and doPost in Code.gs) and draws from the data it kept last time. The key is not
+ * in that public copy: it is given once on the phone, in the link (#k=...) or pasted in, and kept there.
  */
 const KEY = null;   // printed as a JavaScript string by the template's escaping
 const ASSETS_IN = null;
 const BOOT = null;
 const IN_GAS = typeof google !== 'undefined' && !!google.script;
+const WEB_APP = "https://script.google.com/macros/s/AKfycbzARQ5GRbQ19IihSySA3YHISRFnF5Ksx304eq6vVEVj1JZORVzZ8XiA-7ypy4F_oKEv3Q/exec";   // the GitHub Pages copy: the web app's address (build-app.sh); not secret without the key
 
-/** The web app's address and key from a link: the app's own (#u=...&k=...) or the web app's (.../exec?k=...). */
+/** The web app's address and key from the key alone, the app's link (#k=..., #u=...&k=...) or the web app's (.../exec?k=...). */
 function parseConn(text) {
+  text = String(text || '').trim();
+  if (/^[0-9a-f]{32}$/i.test(text)) return WEB_APP ? { url: WEB_APP, key: text } : null;
   try {
-    const u = new URL(String(text).trim()), h = new URLSearchParams(u.hash.slice(1));
-    const c = h.get('u') ? { url: h.get('u'), key: h.get('k') } : { url: u.origin + u.pathname, key: u.searchParams.get('k') };
+    const u = new URL(text), h = new URLSearchParams(u.hash.slice(1));
+    const c = h.get('k') ? { url: h.get('u') || WEB_APP, key: h.get('k') } : { url: u.origin + u.pathname, key: u.searchParams.get('k') };
     return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(c.url) && c.key ? c : null;
   } catch (e) {
     return null;
@@ -304,7 +309,7 @@ function setAssets(list) {
 setAssets(ASSETS_IN || load('assets'));
 const MON = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const MONL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const TITLES = { ozet: 'Birikim', grafik: 'Grafikler', islem: 'İşlemler', varlik: 'Varlıklar' };
+const TITLES = { ozet: 'Güneş Ailesi', grafik: 'Grafikler', islem: 'İşlemler', varlik: 'Varlıklar' };
 const TAB_NAMES = { ozet: 'Özet', grafik: 'Grafikler', islem: 'İşlemler', varlik: 'Varlıklar' };
 /** Holdings are told apart by rank, as most are gold and gold colours would all look alike. */
 const PALETTE = ['#F5C451', '#FF8A3D', '#4C9DFF', '#34D17A', '#C77DFF', '#5AD8E6', '#FF6B8B', '#B7E35A', '#C9A27E', '#8E8E93'];
@@ -315,6 +320,12 @@ const KIND = {
   'Hediye aldım': { c: '#C77DFF', icon: 'gift', in: true },
   'Hediye verdim': { c: '#FF9F0A', icon: 'gift', in: false },
 };
+/** Güneş Ailesi's sun rising over the savings lines (icon.svg drawn small). */
+const LOGO = `<svg viewBox="0 0 24 24" fill="none" stroke="#F5C451" stroke-width="1.9" stroke-linecap="round">
+  <defs><linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE9A8"/><stop offset="1" stop-color="#E29B28"/></linearGradient></defs>
+  <path d="M7 15a5 5 0 0 1 10 0z" fill="url(#sun)" stroke="none"/>
+  <path d="M5 11.9 3.4 11.2M7.3 8.8 6.1 7.6M10.2 7.1l-.6-1.6M12 6.6V4.9M13.8 7.1l.6-1.6M16.7 8.8l1.2-1.2M19 11.9l1.6-.7"/>
+  <path d="M3.6 15h16.8"/><path d="M8 18h8" stroke-opacity=".55"/><path d="M10.6 20.7h2.8" stroke-opacity=".3"/></svg>`;
 const ICONS = {
   ozet: '<path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.4A9 9 0 0 1 20.6 9H15z"/>',
   grafik: '<path d="M4 19.5h16"/><path d="m5 15 4.5-5 4 3L20 6"/>',
@@ -554,13 +565,13 @@ function renderHeader() {
 
 /** Outside Apps Script, the first time: where the web app is. */
 function renderConnect() {
-  $('title').textContent = 'Birikim';
+  $('title').textContent = TITLES.ozet;
   $('sub').textContent = '';
   if ($('conn')) return;
-  $('v-' + S.tab).innerHTML = `<div class="connect"><div class="ico" style="display:grid;place-items:center">${icon('coin', 32)}</div>
-    <b>Birikim'i bağla</b>
-    <p>Apps Script web uygulamasının adresini anahtarıyla birlikte yapıştır:<br><code>https://script.google.com/macros/s/…/exec?k=…</code></p>
-    <div class="input"><input id="conn" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Adresi yapıştır"></div>
+  $('v-' + S.tab).innerHTML = `<div class="connect"><div class="ico" style="display:grid;place-items:center">${LOGO}</div>
+    <b>Hoş geldin</b>
+    <p>Birikim anahtarını ya da sana verilen bağlantı linkini yapıştır.</p>
+    <div class="input"><input id="conn" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Anahtar ya da link"></div>
     <div class="err" id="connErr" style="margin-top:10px"></div>
     <button class="primary" id="connect" style="margin-top:14px">Bağlan</button></div>`;
 }
@@ -568,7 +579,7 @@ function renderConnect() {
 function connect() {
   const c = parseConn($('conn').value);
   if (!c) {
-    $('connErr').textContent = 'Adres tanınmadı: sonu /exec?k=... ile bitmeli.';
+    $('connErr').textContent = 'Tanınmadı: 32 karakterlik anahtarı ya da linkin tamamını yapıştır.';
     return;
   }
   CONN = c;
@@ -1131,6 +1142,7 @@ window.addEventListener('resize', () => {
 document.querySelectorAll('.tab').forEach(b => { b.innerHTML = icon(b.dataset.tab, 24) + '<span>' + TAB_NAMES[b.dataset.tab] + '</span>'; });
 document.querySelector('.fab').innerHTML = icon('plus', 26);
 $('refresh').innerHTML = icon('refresh', 20);
+$('mark').innerHTML = LOGO;
 document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + S.tab));
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
 render();
