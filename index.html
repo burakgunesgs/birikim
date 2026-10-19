@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="theme-color" content="#0A0A0D">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Birikim</title>
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Birikim">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #0A0A0D; --card: #15151B; --card2: #1E1E26; --line: rgba(255,255,255,.07);
+    --text: #F4F4F6; --muted: rgba(235,235,245,.62); --faint: rgba(235,235,245,.34);
+    --gold: #F5C451; --up: #34D17A; --down: #FF5A4F; --violet: #C77DFF;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; min-height: 100vh;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .up { color: var(--up); } .down { color: var(--down); }
+
+  /* header */
+  .bar {
+    position: sticky; top: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: space-between;
+    padding: calc(16px + env(safe-area-inset-top)) 20px 10px; background: linear-gradient(var(--bg) 75%, rgba(10,10,13,0));
+  }
+  .bar h1 { margin: 2px 0 0; font-size: 30px; font-weight: 750; letter-spacing: -.025em; }
+  .sub { font-size: 12.5px; color: var(--muted); font-weight: 550; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #FF9F0A; display: inline-block; }
+  .dot.ok { background: var(--up); box-shadow: 0 0 0 3px rgba(52,209,122,.18); }
+  .icon-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--card); display: grid; place-items: center; color: var(--muted); }
+  .icon-btn.spin svg { animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  main { padding: 0 16px calc(112px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; }
+  .view { display: none; } .view.on { display: block; animation: in .22s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+
+  /* tab bar */
+  .tabs {
+    position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); height: 66px;
+    max-width: 616px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+    background: rgba(30,30,37,.86); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid var(--line); border-radius: 24px; z-index: 30; box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 650; color: var(--faint); }
+  .tab.on { color: var(--gold); }
+  .fab {
+    justify-self: center; width: 52px; height: 52px; border-radius: 18px; display: grid; place-items: center;
+    background: linear-gradient(145deg, #FFDC82, #E6A532); color: #1C1405; box-shadow: 0 8px 22px rgba(245,196,81,.35);
+  }
+  .fab:active, .primary:active { transform: scale(.96); }
+
+  /* summary */
+  .hero {
+    position: relative; overflow: hidden; border-radius: 26px; padding: 20px 20px 0;
+    background: radial-gradient(120% 90% at 100% 0%, rgba(245,196,81,.24), transparent 55%), linear-gradient(160deg, #211B10, #131317 62%);
+    border: 1px solid rgba(245,196,81,.16);
+  }
+  .hero .label { color: var(--muted); font-size: 13px; font-weight: 650; }
+  .hero .total { font-size: 40px; font-weight: 750; letter-spacing: -.035em; margin: 2px 0 10px; line-height: 1.1; }
+  .hero .total small { font-size: 24px; color: var(--muted); font-weight: 650; margin-left: 4px; }
+  .hero-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: rgba(255,255,255,.08); }
+  .pill.up { background: rgba(52,209,122,.15); } .pill.down { background: rgba(255,90,79,.15); }
+  .spark { margin: 12px -20px 0; height: 18px; }
+  .spark svg { display: block; width: 100%; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .stat { background: var(--card); border-radius: 18px; padding: 13px 14px; min-width: 0; }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 650; }
+  .stat .v { font-size: 18px; font-weight: 750; margin-top: 3px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat .s { font-size: 12px; color: var(--faint); margin-top: 1px; }
+
+  .card { background: var(--card); border-radius: 20px; padding: 16px; margin-top: 12px; }
+  .card-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+  .card-h h3 { margin: 0; font-size: 16.5px; font-weight: 750; letter-spacing: -.01em; }
+  .link { color: var(--gold); font-size: 14px; font-weight: 650; }
+  .seg { display: inline-flex; background: var(--card2); border-radius: 11px; padding: 2px; }
+  .seg button { padding: 6px 12px; border-radius: 9px; font-size: 13px; font-weight: 650; color: var(--muted); }
+  .seg button.on { background: #383843; color: var(--text); }
+  .seg.wide { display: flex; margin-top: 2px; } .seg.wide button { flex: 1; text-align: center; padding: 8px 0; }
+
+  .alloc { display: flex; align-items: center; gap: 18px; }
+  .donut { width: 128px; height: 128px; flex: none; position: relative; }
+  .donut svg { width: 100%; height: 100%; display: block; }
+  .donut .c { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 11.5px; color: var(--muted); }
+  .donut .c b { display: block; font-size: 17px; color: var(--text); font-weight: 750; }
+  .legend { flex: 1; min-width: 0; display: grid; gap: 9px; }
+  .lg { display: flex; align-items: center; gap: 8px; font-size: 13.5px; width: 100%; }
+  .lg i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .lg span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .lg b { font-weight: 700; }
+
+  /* lists */
+  .row { display: flex; align-items: center; gap: 12px; padding: 11px 0; width: 100%; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .ico { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; flex: none; }
+  .row .t { flex: 1; min-width: 0; }
+  .row .t b { display: block; font-weight: 650; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .t span, .row .r span { font-size: 12.5px; color: var(--muted); }
+  .row .r { text-align: right; flex: none; }
+  .row .r b { display: block; font-weight: 700; }
+  .list { padding-top: 4px; padding-bottom: 4px; }
+  .group-h { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-weight: 650; margin: 20px 6px -4px; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 2px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { padding: 8px 15px; border-radius: 999px; background: var(--card); font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; border: 1px solid transparent; }
+  .chip.on { background: rgba(245,196,81,.13); color: var(--gold); border-color: rgba(245,196,81,.32); }
+
+  /* holdings */
+  .totals { display: flex; justify-content: space-between; background: var(--card); border-radius: 20px; padding: 16px; }
+  .totals span { display: block; font-size: 12px; color: var(--muted); font-weight: 650; }
+  .totals b { font-size: 20px; font-weight: 750; letter-spacing: -.01em; }
+  .hold { display: block; width: 100%; background: var(--card); border-radius: 18px; padding: 14px 16px 14px 18px; margin-top: 10px; position: relative; overflow: hidden; }
+  .hold::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--c); }
+  .hold .top, .hold .sub { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .hold .name { font-weight: 700; font-size: 16px; }
+  .hold .val { font-weight: 750; font-size: 17px; }
+  .hold .sub { margin-top: 3px; font-size: 13px; color: var(--muted); }
+  .share { height: 4px; background: var(--card2); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+  .share i { display: block; height: 100%; background: var(--c); border-radius: 2px; }
+
+  /* charts */
+  .chart { position: relative; touch-action: pan-y; -webkit-user-select: none; user-select: none; margin: 0 -4px; }
+  .chart svg { display: block; width: 100%; overflow: visible; }
+  .gl { stroke: rgba(255,255,255,.06); stroke-width: 1; }
+  .zero { stroke: rgba(255,255,255,.22); stroke-width: 1; }
+  .ax { font-size: 10.5px; fill: var(--faint); font-family: inherit; }
+  .ml { stroke: rgba(255,255,255,.35); stroke-width: 1; stroke-dasharray: 3 3; }
+  .ch-head { margin-bottom: 10px; min-height: 58px; }
+  .ch-head .m { font-size: 12.5px; color: var(--muted); font-weight: 650; }
+  .ch-head .v { font-size: 25px; font-weight: 750; letter-spacing: -.025em; }
+  .ch-head .d { font-size: 13px; font-weight: 650; }
+  .keys { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .keys i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .keys i.dash { background: repeating-linear-gradient(90deg, rgba(235,235,245,.6) 0 4px, transparent 4px 7px); }
+  .flows { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .flows b { color: var(--text); font-weight: 700; }
+  .flows i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: right; color: var(--faint); font-weight: 650; font-size: 11.5px; padding: 0 0 8px; }
+  .tbl td { text-align: right; padding: 9px 0; border-top: 1px solid var(--line); }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; color: var(--muted); }
+  .foot { font-size: 12px; color: var(--faint); margin: 14px 6px 0; line-height: 1.45; }
+
+  /* sheet */
+  .sheet-wrap { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+  .sheet-wrap.open { pointer-events: auto; }
+  .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); opacity: 0; transition: opacity .25s; }
+  .open .backdrop { opacity: 1; }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; max-width: 640px; margin: 0 auto; max-height: 92vh; overflow-y: auto;
+    background: #17171D; border-radius: 26px 26px 0 0; padding: 8px 18px calc(22px + env(safe-area-inset-bottom));
+    transform: translateY(105%); transition: transform .34s cubic-bezier(.2,.9,.25,1); border-top: 1px solid var(--line);
+    overscroll-behavior: contain;
+  }
+  .open .sheet { transform: none; }
+  .sheet-wrap:not(.open) .sheet { visibility: hidden; transition: transform .34s cubic-bezier(.2,.9,.25,1), visibility 0s .34s; }
+  .handle { width: 40px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.2); margin: 4px auto 10px; }
+  .sh-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .sh-top h2 { margin: 0; font-size: 21px; font-weight: 750; letter-spacing: -.015em; flex: 1; min-width: 0; }
+  .sh-top .ico { width: 46px; height: 46px; border-radius: 15px; }
+  .sh-top small { display: block; font-size: 13px; color: var(--muted); font-weight: 550; letter-spacing: 0; }
+  .close { width: 32px; height: 32px; border-radius: 50%; background: var(--card2); display: grid; place-items: center; color: var(--muted); flex: none; }
+  .kv { background: var(--card2); border-radius: 16px; padding: 2px 14px; }
+  .kv div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; font-size: 14.5px; }
+  .kv div + div { border-top: 1px solid var(--line); }
+  .kv span { color: var(--muted); } .kv b { font-weight: 650; text-align: right; }
+  .sec { font-size: 13px; color: var(--muted); font-weight: 650; margin: 18px 4px 4px; }
+
+  /* form */
+  .kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .kind { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 15px; background: var(--card2); font-weight: 650; font-size: 14.5px; border: 1.5px solid transparent; color: var(--muted); }
+  .kind .ico { width: 32px; height: 32px; border-radius: 10px; }
+  .kind.on { border-color: var(--k); color: var(--text); }
+  .field { display: block; margin-bottom: 12px; min-width: 0; }
+  .field > span { display: block; font-size: 12.5px; color: var(--muted); font-weight: 650; margin: 0 0 6px 4px; }
+  .input { position: relative; display: flex; align-items: center; background: var(--card2); border-radius: 14px; padding: 0 14px; border: 1.5px solid transparent; height: 52px; }
+  .input:focus-within { border-color: rgba(245,196,81,.55); }
+  .input input, .input select {
+    flex: 1; min-width: 0; width: 100%; background: none; border: 0; outline: 0; color: var(--text); font: inherit;
+    font-size: 17px; height: 100%; -webkit-appearance: none; appearance: none; padding: 0;
+  }
+  .input input::-webkit-date-and-time-value { text-align: left; }
+  .input input::placeholder { color: var(--faint); }
+  .input em { font-style: normal; color: var(--faint); font-size: 15px; margin-left: 8px; flex: none; }
+  .input .chev { pointer-events: none; color: var(--faint); flex: none; display: flex; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .picks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -4px 0 8px; }
+  .picks:empty { display: none; }
+  .pick { padding: 9px 12px; border-radius: 13px; background: var(--card2); border: 1.5px solid transparent; }
+  .pick span { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .pick b { font-size: 15px; font-weight: 700; }
+  .pick.on { border-color: rgba(245,196,81,.55); }
+  .hint { font-size: 12.5px; color: var(--faint); margin: 0 4px 12px; min-height: 17px; }
+  .sum { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 4px 12px; border-top: 1px solid var(--line); }
+  .sum span { color: var(--muted); font-weight: 650; } .sum b { font-size: 23px; font-weight: 750; letter-spacing: -.02em; }
+  .err { color: var(--down); font-size: 13.5px; font-weight: 600; margin: 0 4px 10px; }
+  .err:empty { display: none; }
+  .primary {
+    display: block; width: 100%; height: 54px; border-radius: 16px; text-align: center; font-weight: 750; font-size: 17px;
+    background: linear-gradient(145deg, #FFDC82, #E6A532); color: #1C1405; margin-top: 4px;
+  }
+  .primary:disabled { opacity: .55; }
+  .danger { display: block; width: 100%; height: 50px; border-radius: 15px; text-align: center; background: rgba(255,90,79,.12); color: var(--down); font-weight: 700; font-size: 16px; margin-top: 12px; }
+  .danger.sure { background: var(--down); color: #fff; }
+
+  /* states */
+  .skel { border-radius: 16px; background: linear-gradient(90deg, #15151b 0%, #22222a 50%, #15151b 100%); background-size: 200% 100%; animation: sh 1.2s infinite linear; }
+  @keyframes sh { to { background-position: -200% 0; } }
+  .empty { text-align: center; padding: 56px 24px; color: var(--muted); }
+  .empty .ico { width: 64px; height: 64px; border-radius: 22px; margin: 0 auto 14px; background: rgba(245,196,81,.13); color: var(--gold); }
+  .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
+  .empty .primary { width: auto; display: inline-block; padding: 0 26px; margin-top: 18px; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translate(-50%, 16px);
+    background: #2C2C35; padding: 11px 16px; border-radius: 13px; font-size: 14px; font-weight: 650; opacity: 0;
+    transition: .25s; z-index: 60; pointer-events: none; max-width: 90vw; box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.bad { background: #3D1B19; color: #FFB4AE; }
+  .setup .tabs, .setup #refresh { display: none; }
+  .connect { padding: 28px 4px; }
+  .connect .ico { width: 64px; height: 64px; border-radius: 22px; background: rgba(245,196,81,.13); color: var(--gold); margin-bottom: 16px; }
+  .connect b { display: block; font-size: 20px; margin-bottom: 6px; }
+  .connect p { color: var(--muted); margin: 0 0 18px; }
+  .connect code { color: var(--text); font: inherit; font-size: 13px; word-break: break-all; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div>
+    <div class="sub" id="sub"></div>
+    <h1 id="title">Birikim</h1>
+  </div>
+  <button class="icon-btn" id="refresh" aria-label="Yenile"></button>
+</header>
+
+<main>
+  <section class="view" id="v-ozet"></section>
+  <section class="view" id="v-grafik"></section>
+  <section class="view" id="v-islem"></section>
+  <section class="view" id="v-varlik"></section>
+</main>
+
+<nav class="tabs">
+  <button class="tab" data-tab="ozet"></button>
+  <button class="tab" data-tab="grafik"></button>
+  <button class="fab" data-add="" aria-label="İşlem ekle"></button>
+  <button class="tab" data-tab="islem"></button>
+  <button class="tab" data-tab="varlik"></button>
+</nav>
+
+<div class="sheet-wrap" id="sheetWrap"><div class="backdrop" data-close></div><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/*
+ * Birikim on the phone: Özet (worth now), Grafikler (month by month), İşlemler (every transaction), Varlıklar (each
+ * holding), and a sheet to add one. Values are quantity x Grand Bazaar buying price.
+ *
+ * Two ways to run. Served by Apps Script: the template fills in the key and the data (BOOT), so the page draws at
+ * once, and calls go through google.script.run. The copy on GitHub Pages (build-app.sh) has these null: it calls
+ * the web app over the network (api_ and doPost in Code.gs), with its address and key kept on the phone, given once
+ * in the link (#u=...&k=...) or pasted in, and draws from the data it kept last time.
+ */
+const KEY = null;   // printed as a JavaScript string by the template's escaping
+const ASSETS_IN = null;
+const BOOT = null;
+const IN_GAS = typeof google !== 'undefined' && !!google.script;
+
+/** The web app's address and key from a link: the app's own (#u=...&k=...) or the web app's (.../exec?k=...). */
+function parseConn(text) {
+  try {
+    const u = new URL(String(text).trim()), h = new URLSearchParams(u.hash.slice(1));
+    const c = h.get('u') ? { url: h.get('u'), key: h.get('k') } : { url: u.origin + u.pathname, key: u.searchParams.get('k') };
+    return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(c.url) && c.key ? c : null;
+  } catch (e) {
+    return null;
+  }
+}
+let CONN = IN_GAS ? null : parseConn(location.href) || load('conn');
+if (CONN) store('conn', CONN);
+
+let ASSETS = [];
+const A = {};
+function setAssets(list) {
+  ASSETS = list || [];
+  ASSETS.forEach(a => { A[a.code] = a; });
+}
+setAssets(ASSETS_IN || load('assets'));
+const MON = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+const MONL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const TITLES = { ozet: 'Birikim', grafik: 'Grafikler', islem: 'İşlemler', varlik: 'Varlıklar' };
+const TAB_NAMES = { ozet: 'Özet', grafik: 'Grafikler', islem: 'İşlemler', varlik: 'Varlıklar' };
+/** Holdings are told apart by rank, as most are gold and gold colours would all look alike. */
+const PALETTE = ['#F5C451', '#FF8A3D', '#4C9DFF', '#34D17A', '#C77DFF', '#5AD8E6', '#FF6B8B', '#B7E35A', '#C9A27E', '#8E8E93'];
+const GROUPS = { 'Altın': '#F5C451', 'Döviz': '#34D17A', 'Nakit': '#5AD8E6', 'Diğer': '#AEB4C0' };
+const KIND = {
+  'Aldım': { c: '#34D17A', icon: 'in', in: true },
+  'Sattım': { c: '#FF5A4F', icon: 'out', in: false },
+  'Hediye aldım': { c: '#C77DFF', icon: 'gift', in: true },
+  'Hediye verdim': { c: '#FF9F0A', icon: 'gift', in: false },
+};
+const ICONS = {
+  ozet: '<path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.4A9 9 0 0 1 20.6 9H15z"/>',
+  grafik: '<path d="M4 19.5h16"/><path d="m5 15 4.5-5 4 3L20 6"/>',
+  islem: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-width="2.6"/>',
+  varlik: '<rect x="3" y="6" width="18" height="13.5" rx="3.5"/><path d="M3 10.5h18M16 15h1.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  refresh: '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4.5V9h-4.5"/>',
+  in: '<path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/>',
+  out: '<path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 19.5h14"/>',
+  gift: '<path d="M4.5 11h15v8.5h-15zM3.5 7.5h17V11h-17zM12 7.5v12"/><path d="M12 7.5C10.5 4.5 7 4 7 6s3 1.5 5 1.5Zm0 0c1.5-3 5-3.5 5-1.5s-3 1.5-5 1.5Z"/>',
+  coin: '<ellipse cx="12" cy="6.5" rx="7" ry="3"/><path d="M5 6.5v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/><path d="M5 11.5v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>',
+  close: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  chev: '<path d="m7 10 5 5 5-5"/>',
+};
+
+// ---- formatting -------------------------------------------------------------------------------
+
+const $ = id => document.getElementById(id);
+const nf0 = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nfq = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 3 });
+const nfc = new Intl.NumberFormat('tr-TR', { notation: 'compact', maximumFractionDigits: 1 });
+const tl = (v, d) => (d ? nf2 : nf0).format(v || 0) + ' ₺';
+const sign = v => v >= 0.5 ? '+' : v <= -0.5 ? '−' : '';
+const stl = (v, d) => sign(v) + tl(Math.abs(v), d);
+const pct = v => '%' + nf1.format(Math.abs(v || 0));
+const cls = v => v >= 0.5 ? 'up' : v <= -0.5 ? 'down' : '';
+const qty = (q, unit) => nfq.format(q) + (unit ? ' ' + unit : '');
+const r1 = v => Math.round(v * 10) / 10;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const icon = (name, size) => `<svg width="${size || 20}" height="${size || 20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+function alpha(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+const pad2 = n => String(n).padStart(2, '0');
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+const dShort = ymd => { const p = ymd.split('-'); return Number(p[2]) + ' ' + MON[p[1] - 1] + (p[0] !== String(new Date().getFullYear()) ? ' ' + p[0] : ''); };
+const dLong = ymd => { const p = ymd.split('-'); return Number(p[2]) + ' ' + MONL[p[1] - 1] + ' ' + p[0]; };
+const mLong = ym => MONL[ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4);
+const mShort = (ym, year) => MON[ym.slice(5, 7) - 1] + (year ? ' ' + ym.slice(2, 4) : '');
+const hhmm = d => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+/** A daily change in percent, signed and coloured like the rest (the thresholds work in hundredths). */
+const change = c => `<i class="${cls(c * 100)}" style="font-style:normal">${sign(c * 100)}${pct(c)}</i>`;
+
+/** A number typed the Turkish way or not: "3.150,50", "3150,5", "2.5". For prices a dot before three digits groups thousands. */
+function parseNum(s, price) {
+  s = String(s || '').trim().replace(/\s/g, '');
+  if (!s) return NaN;
+  if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+  else if (price && /^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  return Number(s);
+}
+
+function load(k) { try { return JSON.parse(localStorage.getItem('birikim.' + k)); } catch (e) { return null; } }
+function store(k, v) { try { localStorage.setItem('birikim.' + k, JSON.stringify(v)); } catch (e) { /* private mode */ } }
+
+// ---- state and server -------------------------------------------------------------------------
+
+const S = {
+  data: BOOT || load('boot'), prices: null, history: load('history'), historyError: '',
+  tab: TITLES[load('tab')] ? load('tab') : 'ozet', range: load('range') || '12', alloc: 'asset', filter: 'all',
+  pick: null, busy: 0, pricing: false, refreshed: 0,
+};
+S.prices = S.data && S.data.prices;
+
+function call(fn, ...args) {
+  S.busy++;
+  spin();
+  const done = IN_GAS
+    ? new Promise((ok, fail) => google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](KEY, ...args))
+    : remote(fn, args);
+  return done.finally(() => { S.busy--; spin(); });
+}
+
+/** The same calls over the network: reads as GET, changes as POST in text/plain (no CORS preflight). */
+const ROUTES = {
+  apiBoot: () => ({ api: 'boot' }),
+  apiPrices: () => ({ api: 'prices' }),
+  apiHistory: () => ({ api: 'history' }),
+  apiPriceAt: (code, date) => ({ api: 'priceAt', code: code, date: date }),
+  apiAdd: tx => ({ api: 'add', tx: tx, post: true }),
+  apiDelete: row => ({ api: 'delete', row: row, post: true }),
+};
+
+function remote(fn, args) {
+  if (!CONN) return Promise.reject(new Error('Bağlantı yok'));
+  const p = Object.assign({ k: CONN.key }, ROUTES[fn].apply(null, args)), post = p.post;
+  delete p.post;
+  const req = post
+    ? fetch(CONN.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) })
+    : fetch(CONN.url + '?' + new URLSearchParams(p));
+  return req.then(r => r.json().catch(() => { throw new Error('Sunucu beklenmedik bir cevap verdi'); }),
+    () => { throw new Error('Sunucuya ulaşılamadı, internet bağlantını kontrol et'); })
+    .then(d => {
+      if (d && d.error === 'unauthorized') {
+        forget();
+        throw new Error('Anahtar kabul edilmedi');
+      }
+      if (d && d.error) throw new Error(d.error);
+      if (fn === 'apiBoot' && !d.transactions) throw new Error("Apps Script'te yeni sürüm dağıtılmamış");
+      return d;
+    });
+}
+
+/** Back to the connect screen (wrong key). */
+function forget() {
+  CONN = null;
+  store('conn', null);
+  S.data = null;
+  render();
+}
+const msg = e => String((e && e.message) || e || 'Hata').replace(/^(Exception|Error|ScriptError):\s*/, '');
+const newer = (a, b) => !a || (b && (b.fetchedAt || 0) >= (a.fetchedAt || 0)) ? b : a;
+
+function setData(d) {
+  if (d.assets) {
+    setAssets(d.assets);
+    store('assets', d.assets);
+    delete d.assets;
+  }
+  S.data = d;
+  S.prices = newer(S.prices, d.prices);
+  if (!IN_GAS) store('boot', Object.assign({}, d, { prices: S.prices }));
+}
+
+function refreshPrices() {
+  S.pricing = true;
+  renderHeader();
+  return call('apiPrices').then(p => { S.prices = newer(S.prices, p); }).finally(() => { S.pricing = false; render(); });
+}
+
+function loadHistory() {
+  S.historyError = '';
+  return call('apiHistory').then(h => {
+    S.history = h;
+    store('history', h);
+  }, e => {
+    S.historyError = msg(e);
+    throw e;
+  }).finally(render);
+}
+
+/** Everything again: data, prices, history. Failures say so once. */
+function refreshAll(withData) {
+  if (!IN_GAS && !CONN) return;
+  S.refreshed = Date.now();
+  const jobs = [refreshPrices(), loadHistory()];
+  if (withData) jobs.unshift(call('apiBoot').then(d => { setData(d); render(); }));
+  Promise.allSettled(jobs).then(rs => {
+    const bad = rs.find(r => r.status === 'rejected');
+    if (bad) toast(msg(bad.reason), true);
+  });
+}
+
+// ---- what it is worth -------------------------------------------------------------------------
+
+/** Holdings valued at today's buying price (at cost when an asset has no price), largest first. */
+function book() {
+  const P = S.prices || {}, hs = S.data ? S.data.summary.holdings : [];
+  const items = hs.map(h => {
+    const a = A[h.code] || { name: h.name, unit: h.unit, group: 'Diğer' };
+    const p = P[h.code];
+    const value = p && p.buy ? h.qty * p.buy : h.cost;
+    return {
+      code: h.code, name: a.name, unit: a.unit, group: a.group, qty: h.qty, cost: h.cost, p: p, value: value,
+      gain: value - h.cost, day: p && p.change ? value * p.change / (100 + p.change) : 0,
+    };
+  }).sort((x, y) => y.value - x.value);
+  items.forEach((it, i) => { it.color = PALETTE[Math.min(i, PALETTE.length - 1)]; });
+  const total = k => items.reduce((s, it) => s + it[k], 0);
+  const value = total('value'), cost = total('cost');
+  return { items: items, value: value, cost: cost, gain: value - cost, day: total('day'),
+           realized: S.data ? S.data.summary.realized : 0 };
+}
+
+/** The server's months, with this month replaced by what the page shows now (fresher prices). */
+function months() {
+  if (!S.history) return [];
+  const all = S.history.months.map(m => Object.assign({}, m));
+  const last = all[all.length - 1], now = todayStr().slice(0, 7);
+  if (last && last.month === now && S.data) {
+    const b = book();
+    last.value = Math.round(b.value);
+    last.cost = Math.round(b.cost);
+    last.realized = Math.round(b.realized);
+  }
+  // Gain of each month: the change in (value - cost + gains from selling), so buying more is not counted as gain.
+  let before = 0;
+  all.forEach(m => {
+    const w = m.value - m.cost + m.realized;
+    m.ret = w - before;
+    before = w;
+  });
+  return all;
+}
+
+// ---- rendering --------------------------------------------------------------------------------
+
+function render() {
+  document.body.classList.toggle('setup', !IN_GAS && !CONN);
+  if (!IN_GAS && !CONN) { renderConnect(); return; }
+  renderHeader();
+  ({ ozet: renderOzet, grafik: renderGrafik, islem: renderIslem, varlik: renderVarlik })[S.tab]();
+}
+
+function go(tab) {
+  if (S.tab === tab) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  S.tab = tab;
+  store('tab', tab);
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + tab));
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  window.scrollTo(0, 0);
+  render();
+}
+
+function spin() {
+  $('refresh').classList.toggle('spin', S.busy > 0);
+}
+
+function renderHeader() {
+  $('title').textContent = TITLES[S.tab];
+  const at = S.prices && S.prices.fetchedAt;
+  let text = 'Fiyatlar alınıyor…', fresh = false;
+  if (at) {
+    const d = new Date(at), today = d.toDateString() === new Date().toDateString();
+    text = 'Kapalıçarşı · ' + (today ? '' : d.getDate() + ' ' + MON[d.getMonth()] + ' ') + hhmm(d);
+    fresh = Date.now() - at < 15 * 60000;
+    if (S.pricing) text += ' · güncelleniyor';
+  }
+  $('sub').innerHTML = `<i class="dot ${fresh ? 'ok' : ''}"></i>${text}`;
+}
+
+/** Outside Apps Script, the first time: where the web app is. */
+function renderConnect() {
+  $('title').textContent = 'Birikim';
+  $('sub').textContent = '';
+  if ($('conn')) return;
+  $('v-' + S.tab).innerHTML = `<div class="connect"><div class="ico" style="display:grid;place-items:center">${icon('coin', 32)}</div>
+    <b>Birikim'i bağla</b>
+    <p>Apps Script web uygulamasının adresini anahtarıyla birlikte yapıştır:<br><code>https://script.google.com/macros/s/…/exec?k=…</code></p>
+    <div class="input"><input id="conn" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Adresi yapıştır"></div>
+    <div class="err" id="connErr" style="margin-top:10px"></div>
+    <button class="primary" id="connect" style="margin-top:14px">Bağlan</button></div>`;
+}
+
+function connect() {
+  const c = parseConn($('conn').value);
+  if (!c) {
+    $('connErr').textContent = 'Adres tanınmadı: sonu /exec?k=... ile bitmeli.';
+    return;
+  }
+  CONN = c;
+  store('conn', c);
+  S.data = null;
+  render();
+  refreshAll(true);
+}
+
+const skeleton = heights => heights.map(h => `<div class="skel" style="height:${h}px;margin-top:12px"></div>`).join('');
+
+function emptyState() {
+  return `<div class="empty"><div class="ico" style="display:grid;place-items:center">${icon('coin', 32)}</div>
+    <b>Henüz kayıt yok</b>Aldığın altını, dövizi ya da hediyeleri ekle; değeri burada görünsün.
+    <br><button class="primary" data-add="">İlk işlemi ekle</button></div>`;
+}
+
+function seg(name, options, on, wide) {
+  return `<div class="seg${wide ? ' wide' : ''}">${options.map(o =>
+    `<button data-seg="${name}:${o[0]}" class="${o[0] === on ? 'on' : ''}">${o[1]}</button>`).join('')}</div>`;
+}
+
+function txRow(t) {
+  const k = KIND[t.kind], a = A[t.code] || { name: t.name, unit: '' }, amount = t.qty * t.price;
+  return `<button class="row" data-tx="${t.row}">
+    <div class="ico" style="background:${alpha(k.c, .15)};color:${k.c}">${icon(k.icon)}</div>
+    <div class="t"><b>${esc(a.name)}</b><span>${t.kind} · ${dShort(t.date)}</span></div>
+    <div class="r"><b>${amount ? tl(amount) : '—'}</b><span style="color:${k.c}">${k.in ? '+' : '−'}${qty(t.qty, a.unit)}</span></div>
+  </button>`;
+}
+
+// Özet
+
+function renderOzet() {
+  const el = $('v-ozet');
+  if (!S.data) { el.innerHTML = skeleton([190, 80, 180]); return; }
+  if (!S.data.transactions.length) { el.innerHTML = emptyState(); return; }
+  const b = book(), gp = b.cost ? b.gain / b.cost * 100 : 0;
+  const priced = b.items.filter(it => it.p && it.code !== 'TRY');
+  el.innerHTML = `
+    <div class="hero">
+      <div class="label">Toplam değer</div>
+      <div class="total">${nf0.format(b.value)}<small>₺</small></div>
+      <div class="hero-row"><span class="pill ${cls(b.gain)}">${stl(b.gain)} · ${pct(gp)}</span><span class="muted">maliyete göre</span></div>
+      <div class="spark" id="spark"></div>
+    </div>
+    <div class="grid2">
+      <div class="stat"><div class="k">Bugün</div><div class="v ${cls(b.day)}">${stl(b.day)}</div><div class="s">günlük değişim</div></div>
+      <div class="stat"><div class="k">Maliyet</div><div class="v">${tl(b.cost)}</div><div class="s">${b.items.length} varlık</div></div>
+      <div class="stat"><div class="k">Kâr / zarar</div><div class="v ${cls(b.gain)}">${stl(b.gain)}</div><div class="s">${sign(gp)}${pct(gp)}</div></div>
+      <div class="stat"><div class="k">Satıştan kâr</div><div class="v ${cls(b.realized)}">${stl(b.realized)}</div><div class="s">gerçekleşen</div></div>
+    </div>
+    ${b.items.length ? `<div class="card">
+      <div class="card-h"><h3>Dağılım</h3>${seg('alloc', [['asset', 'Varlık'], ['group', 'Tür']], S.alloc)}</div>
+      <div class="alloc"><div class="donut" id="donut"></div><div class="legend" id="legend"></div></div>
+    </div>` : ''}
+    ${priced.length ? `<div class="card">
+      <div class="card-h"><h3>Fiyatlar</h3><span class="faint" style="font-size:12.5px">alış · satış</span></div>
+      ${priced.map(it => `<div class="row">
+        <div class="t"><b>${esc(it.name)}</b><span>1 ${esc(it.unit)}</span></div>
+        <div class="r"><b>${tl(it.p.buy, 2)}</b><span>${tl(it.p.sell, 2)} · ${change(it.p.change)}</span></div>
+      </div>`).join('')}
+    </div>` : ''}
+    <div class="card">
+      <div class="card-h"><h3>Son işlemler</h3><button class="link" data-tab="islem">Tümü</button></div>
+      <div class="list">${S.data.transactions.slice(0, 4).map(txRow).join('')}</div>
+    </div>`;
+  drawSpark();
+  if (b.items.length) drawAlloc(b);
+}
+
+function drawSpark() {
+  const el = $('spark'), ms = months().slice(-12);
+  if (!el || ms.length < 2) return;
+  const W = el.clientWidth || 340, H = 84, vs = ms.map(m => m.value);
+  let lo = Math.min(...vs), hi = Math.max(...vs);
+  if (hi - lo < 1) { hi += 1; lo -= 1; }
+  const pts = vs.map((v, i) => [r1(i * W / (vs.length - 1)), r1(10 + (1 - (v - lo) / (hi - lo)) * (H - 18))]);
+  const line = smooth(pts);
+  el.style.height = H + 'px';
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}">
+    <defs><linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5C451" stop-opacity=".3"/><stop offset="1" stop-color="#F5C451" stop-opacity="0"/></linearGradient></defs>
+    <path d="${line}L${W},${H}L0,${H}Z" fill="url(#gs)"/><path d="${line}" fill="none" stroke="#F5C451" stroke-width="2.2" stroke-linecap="round"/>
+    <text x="${W - 20}" y="${H - 8}" text-anchor="end" class="ax">son ${ms.length} ay</text></svg>`;
+}
+
+function drawAlloc(b) {
+  let parts;
+  if (S.alloc === 'group') {
+    const by = {};
+    b.items.forEach(it => { by[it.group] = (by[it.group] || 0) + it.value; });
+    parts = Object.keys(by).map(g => ({ name: g, value: by[g], color: GROUPS[g] || '#8E8E93' }));
+  } else {
+    parts = b.items.map(it => ({ name: it.name, value: it.value, color: it.color, code: it.code }));
+  }
+  parts = parts.filter(p => p.value > 0).sort((x, y) => y.value - x.value);
+  if (parts.length > 6) {
+    const rest = parts.splice(5);
+    parts.push({ name: 'Diğer', value: rest.reduce((s, p) => s + p.value, 0), color: '#5A5A66' });
+  }
+  const total = parts.reduce((s, p) => s + p.value, 0) || 1, R = 52, C = 2 * Math.PI * R, gap = parts.length > 1 ? 2 : 0;
+  let at = 0;
+  const arcs = parts.map(p => {
+    const len = p.value / total * C;
+    const arc = `<circle r="${R}" cx="64" cy="64" fill="none" stroke="${p.color}" stroke-width="17"
+      stroke-dasharray="${Math.max(len - gap, .01)} ${C}" stroke-dashoffset="${-at}" transform="rotate(-90 64 64)"/>`;
+    at += len;
+    return arc;
+  });
+  $('donut').innerHTML = `<svg viewBox="0 0 128 128"><circle r="${R}" cx="64" cy="64" fill="none" stroke="#24242C" stroke-width="17"/>${arcs.join('')}</svg>
+    <div class="c"><div><b>${nfc.format(total)}</b>₺</div></div>`;
+  $('legend').innerHTML = parts.map(p => `<button class="lg"${p.code ? ` data-hold="${p.code}"` : ''}>
+    <i style="background:${p.color}"></i><span>${esc(p.name)}</span><b>${pct(p.value / total * 100)}</b></button>`).join('');
+}
+
+// Grafikler
+
+function renderGrafik() {
+  const el = $('v-grafik');
+  const ranges = seg('range', [['6', '6 ay'], ['12', '1 yıl'], ['36', '3 yıl'], ['all', 'Tümü']], S.range, true);
+  if (!S.history) {
+    el.innerHTML = S.historyError
+      ? `<div class="card"><b>Grafikler yüklenemedi</b><div class="muted" style="margin:4px 0 12px">${esc(S.historyError)}</div><button class="primary" data-act="history">Tekrar dene</button></div>`
+      : ranges + skeleton([290, 220, 220]);
+    return;
+  }
+  const all = months();
+  if (!all.length) { el.innerHTML = emptyState(); return; }
+  const ms = S.range === 'all' ? all : all.slice(-Number(S.range));
+  const now = todayStr().slice(0, 7);
+  el.innerHTML = `${ranges}
+    <div class="card"><div class="ch-head" id="h1"></div><div class="chart" id="c1"></div>
+      <div class="keys"><span><i style="background:#F5C451"></i>Değer</span><span><i class="dash"></i>Maliyet</span></div></div>
+    <div class="card"><div class="card-h"><h3>Aylık kâr / zarar</h3></div><div class="ch-head" id="h2"></div><div class="chart" id="c2"></div></div>
+    <div class="card"><div class="card-h"><h3>Alım ve satım</h3></div><div class="ch-head" id="h3"></div><div class="chart" id="c3"></div></div>
+    <div class="card"><div class="card-h"><h3>Aylar</h3></div>
+      <table class="tbl"><thead><tr><th>Ay</th><th>Değer</th><th>Maliyet</th><th>Kâr / zarar</th></tr></thead><tbody>
+      ${ms.slice().reverse().map(m => `<tr><td>${mShort(m.month, true)}</td><td>${nf0.format(m.value)}</td><td>${nf0.format(m.cost)}</td>
+        <td class="${cls(m.value - m.cost)}">${sign(m.value - m.cost)}${nf0.format(Math.abs(m.value - m.cost))}</td></tr>`).join('')}
+      </tbody></table></div>
+    <p class="foot">Her ay, o ayın son günündeki değerdir (bu ay: şimdi). ${S.history.approx ? 'Geçmiş altın değerleri yaklaşıktır: bugünkü Kapalıçarşı fiyatı o günkü ons ve dolar kuruyla ölçeklenir. ' : ''}Döviz: TCMB efektif alış kuru.</p>`;
+
+  let i = ms.findIndex(m => m.month === S.pick);
+  if (i < 0) i = ms.length - 1;
+  const charts = [valueChart($('c1'), ms), returnChart($('c2'), ms), flowChart($('c3'), ms)];
+  const pick = j => {
+    S.pick = ms[j].month;
+    charts.forEach(c => { c.el.querySelector('.mk').innerHTML = c.mark(j); });
+    const m = ms[j], gain = m.value - m.cost, when = m.month === now ? mLong(m.month) + ' · bugün' : mLong(m.month) + ' sonu';
+    $('h1').innerHTML = `<div class="m">${when}</div><div class="v">${tl(m.value)}</div>
+      <div class="d ${cls(gain)}">${stl(gain)} · ${pct(m.cost ? gain / m.cost * 100 : 0)} <span class="faint">· maliyet ${tl(m.cost)}</span></div>`;
+    $('h2').innerHTML = `<div class="m">${mLong(m.month)}</div><div class="v ${cls(m.ret)}">${stl(m.ret)}</div>
+      <div class="d faint">değer değişimi; alım, satım ve hediyeler hariç</div>`;
+    $('h3').innerHTML = `<div class="m">${mLong(m.month)}</div><div class="flows">
+      <span><i style="background:#F5C451"></i>Alım <b>${tl(m.bought)}</b></span>
+      <span><i style="background:#C77DFF"></i>Hediye <b>${tl(m.gifts)}</b></span>
+      <span><i style="background:#FF5A4F"></i>Satış <b>${tl(m.sold)}</b></span></div>`;
+  };
+  charts.forEach(c => scrub(c, pick));
+  pick(i);
+}
+
+/** Chart frame: one band per month, the y axis labels on the right. */
+function frame(el, n, H) {
+  const W = Math.max(260, Math.round(el.clientWidth || 320)), L = 6, R = 44, T = 10, B = 22;
+  const band = (W - L - R) / n;
+  return { W: W, H: H, L: L, R: R, T: T, B: B, n: n, band: band, x: i => r1(L + band * (i + .5)) };
+}
+
+function scale(g, lo, hi) {
+  return v => r1(g.T + (1 - (v - lo) / (hi - lo)) * (g.H - g.T - g.B));
+}
+
+/** Round axis values covering lo..hi in about n steps. */
+function ticks(lo, hi, n) {
+  if (hi - lo < 1e-9) hi = lo + 1;
+  const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw);
+  const out = [];
+  for (let v = Math.floor(lo / step) * step; out.length < 12; v += step) {
+    out.push(Math.round(v / step) * step);
+    if (v >= hi - 1e-9) break;
+  }
+  return out;
+}
+
+function axes(g, tk, y, ms) {
+  const every = Math.ceil(ms.length / 6), years = ms.length > 12;
+  const grid = tk.map(v => `<line x1="${g.L}" x2="${g.W - g.R}" y1="${y(v)}" y2="${y(v)}" class="${v === 0 ? 'zero' : 'gl'}"/>
+    <text x="${g.W - g.R + 6}" y="${y(v) + 3.5}" class="ax">${v === 0 ? '0' : nfc.format(v)}</text>`).join('');
+  const labels = ms.map((m, i) => (ms.length - 1 - i) % every ? '' :
+    `<text x="${g.x(i)}" y="${g.H - 5}" text-anchor="middle" class="ax">${mShort(m.month, years || m.month.endsWith('-01'))}</text>`).join('');
+  return grid + labels;
+}
+
+/** A smooth line through points that never overshoots them (monotone cubic). */
+function smooth(P) {
+  const n = P.length;
+  if (n < 3) return 'M' + P.map(p => p.join(',')).join('L');
+  const d = [], m = [];
+  for (let i = 0; i < n - 1; i++) d.push((P[i + 1][1] - P[i][1]) / (P[i + 1][0] - P[i][0]));
+  m[0] = d[0];
+  m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (!d[i]) { m[i] = m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+    if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+  }
+  let path = 'M' + P[0].join(',');
+  for (let i = 0; i < n - 1; i++) {
+    const h = (P[i + 1][0] - P[i][0]) / 3;
+    path += `C${r1(P[i][0] + h)},${r1(P[i][1] + m[i] * h)} ${r1(P[i + 1][0] - h)},${r1(P[i + 1][1] - m[i + 1] * h)} ${P[i + 1].join(',')}`;
+  }
+  return path;
+}
+
+function valueChart(el, ms) {
+  const g = frame(el, ms.length, 200), vals = ms.flatMap(m => [m.value, m.cost]);
+  const lo = Math.min(...vals), hi = Math.max(...vals), room = (hi - lo) * .12 || hi * .1 || 1;
+  const tk = ticks(Math.max(0, lo - room), hi + room * .5, 3);
+  const y = scale(g, tk[0], tk[tk.length - 1]);
+  const pv = ms.map((m, i) => [g.x(i), y(m.value)]), pc = ms.map((m, i) => [g.x(i), y(m.cost)]);
+  const line = smooth(pv), base = g.H - g.B;
+  el.innerHTML = `<svg viewBox="0 0 ${g.W} ${g.H}" height="${g.H}">
+    <defs><linearGradient id="gv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5C451" stop-opacity=".32"/><stop offset="1" stop-color="#F5C451" stop-opacity="0"/></linearGradient></defs>
+    ${axes(g, tk, y, ms)}
+    ${ms.length > 1 ? `<path d="${line}L${pv[pv.length - 1][0]},${base}L${pv[0][0]},${base}Z" fill="url(#gv)"/>` : ''}
+    <path d="${smooth(pc)}" fill="none" stroke="rgba(235,235,245,.5)" stroke-width="1.6" stroke-dasharray="4 4"/>
+    <path d="${line}" fill="none" stroke="#F5C451" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <g class="mk"></g></svg>`;
+  return { el: el, g: g, mark: i => `<line x1="${g.x(i)}" x2="${g.x(i)}" y1="${g.T}" y2="${base}" class="ml"/>
+    <circle cx="${g.x(i)}" cy="${y(ms[i].cost)}" r="4" fill="#15151B" stroke="rgba(235,235,245,.75)" stroke-width="2"/>
+    <circle cx="${g.x(i)}" cy="${y(ms[i].value)}" r="5.5" fill="#F5C451" stroke="#15151B" stroke-width="2.5"/>` };
+}
+
+function bar(x, w, y0, y1, color) {
+  const top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
+  return `<rect x="${r1(x - w / 2)}" y="${r1(top)}" width="${r1(w)}" height="${r1(h)}" rx="${r1(Math.min(3, w / 2))}" fill="${color}"/>`;
+}
+
+const highlight = g => i => `<rect x="${r1(g.L + g.band * i)}" y="${g.T - 4}" width="${r1(g.band)}" height="${g.H - g.T - g.B + 4}" rx="6" fill="rgba(255,255,255,.07)"/>`;
+
+function returnChart(el, ms) {
+  const g = frame(el, ms.length, 160), vs = ms.map(m => m.ret);
+  const tk = ticks(Math.min(0, ...vs), Math.max(0, ...vs), 3);
+  const y = scale(g, tk[0], tk[tk.length - 1]), w = Math.max(2, Math.min(20, g.band * .6));
+  el.innerHTML = `<svg viewBox="0 0 ${g.W} ${g.H}" height="${g.H}"><g class="mk"></g>${axes(g, tk, y, ms)}
+    ${ms.map((m, i) => bar(g.x(i), w, y(0), y(m.ret), m.ret >= 0 ? '#34D17A' : '#FF5A4F')).join('')}</svg>`;
+  return { el: el, g: g, mark: highlight(g) };
+}
+
+function flowChart(el, ms) {
+  const g = frame(el, ms.length, 160);
+  const tk = ticks(0, Math.max(1, ...ms.map(m => Math.max(m.bought + m.gifts, m.sold))), 3);
+  const y = scale(g, tk[0], tk[tk.length - 1]), w = Math.max(1.5, Math.min(12, g.band * .32));
+  el.innerHTML = `<svg viewBox="0 0 ${g.W} ${g.H}" height="${g.H}"><g class="mk"></g>${axes(g, tk, y, ms)}
+    ${ms.map((m, i) => {
+      const x = g.x(i), xb = x - w / 2 - .5, xs = x + w / 2 + .5;
+      return (m.bought ? bar(xb, w, y(0), y(m.bought), '#F5C451') : '') +
+        (m.gifts ? bar(xb, w, y(m.bought), y(m.bought + m.gifts), '#C77DFF') : '') +
+        (m.sold ? bar(xs, w, y(0), y(m.sold), '#FF5A4F') : '');
+    }).join('')}</svg>`;
+  return { el: el, g: g, mark: highlight(g) };
+}
+
+/** Touching or dragging across a chart picks the month under the finger, in all three charts. */
+function scrub(c, pick) {
+  const svg = c.el.querySelector('svg');
+  const at = e => {
+    const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * c.g.W / r.width;
+    pick(Math.max(0, Math.min(c.g.n - 1, Math.floor((x - c.g.L) / c.g.band))));
+  };
+  svg.addEventListener('pointerdown', at);
+  svg.addEventListener('pointermove', e => { if (e.pointerType === 'touch' || e.buttons) at(e); });
+}
+
+// İşlemler
+
+function renderIslem() {
+  const el = $('v-islem');
+  if (!S.data) { el.innerHTML = skeleton([44, 260, 260]); return; }
+  if (!S.data.transactions.length) { el.innerHTML = emptyState(); return; }
+  const f = S.filter;
+  const list = S.data.transactions.filter(t => f === 'all' || (f === 'buy' && t.kind === 'Aldım') ||
+    (f === 'sell' && t.kind === 'Sattım') || (f === 'gift' && t.kind.indexOf('Hediye') === 0));
+  const groups = [];
+  list.forEach(t => {
+    const m = t.date.slice(0, 7);
+    if (!groups.length || groups[groups.length - 1].m !== m) groups.push({ m: m, items: [] });
+    groups[groups.length - 1].items.push(t);
+  });
+  const chips = [['all', 'Tümü'], ['buy', 'Alım'], ['sell', 'Satım'], ['gift', 'Hediye']];
+  el.innerHTML = `<div class="chips">${chips.map(c => `<button class="chip ${c[0] === f ? 'on' : ''}" data-seg="filter:${c[0]}">${c[1]}</button>`).join('')}</div>
+    ${groups.map(gr => {
+      const spent = gr.items.reduce((s, t) => s + (t.kind === 'Aldım' ? t.qty * t.price : 0), 0);
+      return `<div class="group-h"><span>${mLong(gr.m)}</span><span>${gr.items.length} işlem${spent ? ' · ' + tl(spent) + ' alım' : ''}</span></div>
+        <div class="card list">${gr.items.map(txRow).join('')}</div>`;
+    }).join('') || '<div class="empty">Bu türde işlem yok.</div>'}`;
+}
+
+// Varlıklar
+
+function renderVarlik() {
+  const el = $('v-varlik');
+  if (!S.data) { el.innerHTML = skeleton([76, 110, 110, 110]); return; }
+  const b = book();
+  if (!b.items.length) { el.innerHTML = emptyState(); return; }
+  el.innerHTML = `<div class="totals"><div><span>Toplam değer</span><b>${tl(b.value)}</b></div>
+      <div style="text-align:right"><span>Kâr / zarar</span><b class="${cls(b.gain)}">${stl(b.gain)}</b></div></div>
+    ${b.items.map(it => {
+      const share = b.value ? it.value / b.value * 100 : 0, gp = it.cost ? it.gain / it.cost * 100 : 0;
+      return `<button class="hold" style="--c:${it.color}" data-hold="${it.code}">
+        <div class="top"><span class="name">${esc(it.name)}</span><span class="val">${tl(it.value)}</span></div>
+        <div class="sub"><span>${qty(it.qty, it.unit)} · ort. ${tl(it.cost / it.qty)}</span>
+          <span class="${cls(it.gain)}">${stl(it.gain)} · ${pct(gp)}</span></div>
+        <div class="share"><i style="width:${share.toFixed(1)}%"></i></div>
+        <div class="sub"><span class="faint">Portföyün ${pct(share)}</span><span class="faint">${it.p ? 'alış ' + tl(it.p.buy, 2) : 'fiyat yok'}</span></div>
+      </button>`;
+    }).join('')}
+    ${b.realized ? `<p class="foot">Satışlardan gerçekleşen kâr: <b class="${cls(b.realized)}">${stl(b.realized)}</b></p>` : ''}`;
+}
+
+// ---- sheets -----------------------------------------------------------------------------------
+
+function openSheet(html) {
+  $('sheet').innerHTML = html;
+  $('sheet').scrollTop = 0;
+  $('sheetWrap').classList.add('open');
+}
+
+function closeSheet() {
+  $('sheetWrap').classList.remove('open');
+  if (document.activeElement) document.activeElement.blur();
+}
+
+const sheetTop = (ico, color, title, sub) => `<div class="handle" data-close></div><div class="sh-top">
+  ${ico ? `<div class="ico" style="background:${alpha(color, .15)};color:${color}">${icon(ico, 22)}</div>` : ''}
+  <h2>${title}${sub ? `<small>${sub}</small>` : ''}</h2><button class="close" data-close aria-label="Kapat">${icon('close', 16)}</button></div>`;
+
+function openTx(row) {
+  const t = S.data.transactions.find(x => x.row === row);
+  if (!t) return;
+  const k = KIND[t.kind], a = A[t.code] || { name: t.name, unit: '' };
+  openSheet(`${sheetTop(k.icon, k.c, esc(a.name), t.kind + ' · ' + dLong(t.date))}
+    <div class="kv">
+      <div><span>Miktar</span><b>${qty(t.qty, a.unit)}</b></div>
+      <div><span>Birim fiyat</span><b>${tl(t.price, 2)}</b></div>
+      <div><span>Tutar</span><b>${tl(t.qty * t.price, 2)}</b></div>
+      ${t.note ? `<div><span>Not</span><b>${esc(t.note)}</b></div>` : ''}
+    </div>
+    <div class="err" id="dErr"></div>
+    <button class="danger" id="del" data-row="${t.row}">İşlemi sil</button>`);
+}
+
+/** Deleting asks for a second tap, as the row leaves the spreadsheet for good. */
+function deleteTx(btn) {
+  if (!btn.classList.contains('sure')) {
+    btn.classList.add('sure');
+    btn.textContent = 'Silmek için tekrar dokun';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Siliniyor…';
+  call('apiDelete', Number(btn.dataset.row)).then(d => {
+    setData(d);
+    closeSheet();
+    toast('İşlem silindi');
+    render();
+    loadHistory().catch(() => {});
+  }, e => {
+    $('dErr').textContent = msg(e);
+    btn.disabled = false;
+    btn.textContent = 'İşlemi sil';
+  });
+}
+
+function openHolding(code) {
+  const it = book().items.find(x => x.code === code);
+  if (!it) return;
+  const txs = S.data.transactions.filter(t => t.code === code), gp = it.cost ? it.gain / it.cost * 100 : 0;
+  openSheet(`${sheetTop('coin', it.color, esc(it.name), qty(it.qty, it.unit))}
+    <div class="kv">
+      <div><span>Güncel değer</span><b>${tl(it.value)}</b></div>
+      <div><span>Maliyet</span><b>${tl(it.cost)}</b></div>
+      <div><span>Kâr / zarar</span><b class="${cls(it.gain)}">${stl(it.gain)} · ${pct(gp)}</b></div>
+      <div><span>Ortalama maliyet</span><b>${tl(it.cost / it.qty, 2)}</b></div>
+      ${it.p ? `<div><span>Kapalıçarşı alış</span><b>${tl(it.p.buy, 2)}</b></div>
+      <div><span>Kapalıçarşı satış</span><b>${tl(it.p.sell, 2)}</b></div>
+      <div><span>Bugün</span><b class="${cls(it.day)}">${stl(it.day)} · ${change(it.p.change)}</b></div>` : ''}
+    </div>
+    <div class="sec">İşlemler</div>
+    <div class="list">${txs.map(txRow).join('')}</div>
+    <button class="primary" data-add="${code}" style="margin-top:14px">Bu varlık için işlem ekle</button>`);
+}
+
+// Adding: the price starts from that day's price (the dealer's selling price when buying, its buying price otherwise).
+
+const F = { kind: 'Aldım', code: 'GRA', quote: null, touched: false, seq: 0 };
+
+function openAdd(code) {
+  if (code) F.code = code;
+  F.quote = null;
+  F.touched = false;
+  const groups = {};
+  ASSETS.forEach(a => { (groups[a.group] = groups[a.group] || []).push(a); });
+  openSheet(`${sheetTop('', '', 'Yeni işlem')}
+    <div class="kinds">${Object.keys(KIND).map(k => `<button class="kind ${k === F.kind ? 'on' : ''}" data-kind="${k}" style="--k:${KIND[k].c}">
+      <span class="ico" style="background:${alpha(KIND[k].c, .15)};color:${KIND[k].c}">${icon(KIND[k].icon, 18)}</span>${k}</button>`).join('')}</div>
+    <label class="field"><span>Varlık</span><div class="input"><select id="fCode">${Object.keys(groups).map(g =>
+      `<optgroup label="${g}">${groups[g].map(a => `<option value="${a.code}" ${a.code === F.code ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</optgroup>`).join('')}
+      </select><span class="chev">${icon('chev', 18)}</span></div></label>
+    <div class="two">
+      <label class="field"><span>Miktar</span><div class="input"><input id="fQty" inputmode="decimal" placeholder="0" autocomplete="off"><em id="fUnit"></em></div></label>
+      <label class="field"><span>Tarih</span><div class="input"><input id="fDate" type="date" value="${todayStr()}" max="${todayStr()}"></div></label>
+    </div>
+    <label class="field"><span>Birim fiyat</span><div class="input"><input id="fPrice" inputmode="decimal" placeholder="0,00" autocomplete="off"><em>₺</em></div></label>
+    <div class="picks" id="fPicks"></div>
+    <div class="hint" id="fHint"></div>
+    <label class="field"><span>Not</span><div class="input"><input id="fNote" placeholder="İsteğe bağlı" maxlength="120" autocomplete="off"></div></label>
+    <div class="sum"><span>Tutar</span><b id="fTotal">0 ₺</b></div>
+    <div class="err" id="fErr"></div>
+    <button class="primary" id="fSave">Kaydet</button>`);
+  $('fCode').addEventListener('change', () => { F.code = $('fCode').value; F.touched = false; formChanged(true); });
+  $('fDate').addEventListener('change', () => { F.touched = false; formChanged(true); });
+  $('fQty').addEventListener('input', () => formChanged(false));
+  $('fPrice').addEventListener('input', () => { F.touched = true; formChanged(false); });
+  formChanged(true);
+}
+
+function formChanged(requote) {
+  const a = A[F.code], held = heldQty(F.code);
+  $('fUnit').textContent = a.unit;
+  const q = parseNum($('fQty').value, false), p = parseNum($('fPrice').value, true);
+  $('fTotal').textContent = q > 0 && p >= 0 ? tl(q * p, 2) : '0 ₺';
+  $('fErr').textContent = !KIND[F.kind].in && q > held + 1e-9 ? `Elinde ${qty(held, a.unit)} ${a.name} var.` : '';
+  if (requote) quote();
+  else showPicks();
+}
+
+function heldQty(code) {
+  const h = S.data && S.data.summary.holdings.find(x => x.code === code);
+  return h ? h.qty : 0;
+}
+
+/** The suggested price for the chosen asset and day: live prices at once for today, else asked from the server. */
+function quote() {
+  const seq = ++F.seq, code = F.code, date = $('fDate').value || todayStr();
+  const live = S.prices && S.prices[code];
+  F.quote = null;
+  if (date >= todayStr() && live) {
+    F.quote = { buy: live.buy, sell: live.sell, note: 'Kapalıçarşı, şimdi' };
+    fillPrice();
+    return;
+  }
+  $('fHint').textContent = 'O günün fiyatı alınıyor…';
+  $('fPicks').innerHTML = '';
+  call('apiPriceAt', code, date).then(q => {
+    if (seq !== F.seq) return;
+    F.quote = q;
+    fillPrice();
+  }, e => {
+    if (seq === F.seq) $('fHint').textContent = 'Fiyat bulunamadı (' + msg(e) + '). Kendin yazabilirsin.';
+  });
+}
+
+function fillPrice() {
+  const q = F.quote;
+  if (!q) return;
+  if (!F.touched) $('fPrice').value = nf2.format(F.kind === 'Aldım' ? q.sell : q.buy);
+  $('fHint').textContent = q.note || '';
+  formChanged(false);
+}
+
+function showPicks() {
+  const q = F.quote, p = parseNum($('fPrice').value, true);
+  $('fPicks').innerHTML = q && q.buy !== q.sell ? [['buy', 'Alış'], ['sell', 'Satış']].map(o =>
+    `<button class="pick ${Math.abs(p - q[o[0]]) < .005 ? 'on' : ''}" data-pick="${o[0]}"><span>${o[1]} fiyatı</span><b>${tl(q[o[0]], 2)}</b></button>`).join('') : '';
+}
+
+function saveTx() {
+  const btn = $('fSave'), a = A[F.code];
+  const q = parseNum($('fQty').value, false), p = parseNum($('fPrice').value, true);
+  const err = t => { $('fErr').textContent = t; };
+  if (!(q > 0)) return err('Miktarı yaz.');
+  if (!(p >= 0) || (F.kind === 'Aldım' || F.kind === 'Sattım') && !(p > 0)) return err('Birim fiyatı yaz.');
+  if (!KIND[F.kind].in && q > heldQty(F.code) + 1e-9) return err(`Elinde ${qty(heldQty(F.code), a.unit)} ${a.name} var.`);
+  btn.disabled = true;
+  btn.textContent = 'Kaydediliyor…';
+  call('apiAdd', { kind: F.kind, code: F.code, qty: q, price: p || 0, date: $('fDate').value || todayStr(), note: $('fNote').value.trim() })
+    .then(d => {
+      setData(d);
+      closeSheet();
+      toast(`${a.name}: ${F.kind.toLocaleLowerCase('tr')} kaydedildi`);
+      if (navigator.vibrate) navigator.vibrate(12);
+      render();
+      loadHistory().catch(() => {});
+    }, e => {
+      err(msg(e));
+      btn.disabled = false;
+      btn.textContent = 'Kaydet';
+    });
+}
+
+// ---- wiring -----------------------------------------------------------------------------------
+
+let toastTimer = 0;
+function toast(text, bad) {
+  const t = $('toast');
+  t.textContent = text;
+  t.className = 'toast show' + (bad ? ' bad' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast' + (bad ? ' bad' : ''); }, bad ? 4500 : 2200);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-close],[data-tab],[data-add],[data-tx],[data-hold],[data-seg],[data-kind],[data-pick],[data-act],#del,#fSave,#refresh,#connect');
+  if (!t) return;
+  const d = t.dataset;
+  if ('close' in d) closeSheet();
+  else if (d.tab) { closeSheet(); go(d.tab); }
+  else if ('add' in d) openAdd(d.add);
+  else if (d.tx) openTx(Number(d.tx));
+  else if (d.hold) openHolding(d.hold);
+  else if (d.seg) {
+    const kv = d.seg.split(':');
+    S[kv[0]] = kv[1];
+    if (kv[0] === 'range') store('range', kv[1]);
+    render();
+  } else if (d.kind) {
+    F.kind = d.kind;
+    document.querySelectorAll('.kind').forEach(b => b.classList.toggle('on', b.dataset.kind === F.kind));
+    fillPrice();
+    formChanged(false);
+  } else if (d.pick) {
+    $('fPrice').value = nf2.format(F.quote[d.pick]);
+    F.touched = true;
+    formChanged(false);
+  } else if (d.act === 'history') {
+    S.historyError = '';
+    render();
+    loadHistory().catch(e => toast(msg(e), true));
+  } else if (t.id === 'del') deleteTx(t);
+  else if (t.id === 'fSave') saveTx();
+  else if (t.id === 'refresh' && !S.busy) refreshAll(true);
+  else if (t.id === 'connect') connect();
+});
+
+// Back from the background after a while (a home-screen app stays open for days): fetch again.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !S.busy && Date.now() - S.refreshed > 5 * 60000) refreshAll(true);
+});
+
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(render, 150);
+});
+
+document.querySelectorAll('.tab').forEach(b => { b.innerHTML = icon(b.dataset.tab, 24) + '<span>' + TAB_NAMES[b.dataset.tab] + '</span>'; });
+document.querySelector('.fab').innerHTML = icon('plus', 26);
+$('refresh').innerHTML = icon('refresh', 20);
+document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + S.tab));
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
+render();
+refreshAll(!BOOT);
+</script>
+</body>
+</html>
