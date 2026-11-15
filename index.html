@@ -14,6 +14,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
+<script src="config.js"></script>
 <style>
   :root {
     --bg: #0A0A0D; --card: #15151B; --card2: #1E1E26; --line: rgba(255,255,255,.07);
@@ -240,6 +242,8 @@
   .connect b { display: block; font-size: 20px; margin-bottom: 6px; }
   .connect p { color: var(--muted); margin: 0 0 18px; }
   .connect code { color: var(--text); font: inherit; font-size: 13px; word-break: break-all; }
+  .acct { text-align: center; margin: 28px 0 0; font-size: 12.5px; color: var(--faint); }
+  .acct .link { font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -256,6 +260,7 @@
   <section class="view" id="v-grafik"></section>
   <section class="view" id="v-islem"></section>
   <section class="view" id="v-varlik"></section>
+  <div class="acct" id="acct"></div>
 </main>
 
 <nav class="tabs">
@@ -274,31 +279,17 @@
  * Birikim on the phone: Özet (worth now), Grafikler (month by month), İşlemler (every transaction), Varlıklar (each
  * holding), and a sheet to add one. Values are quantity x Grand Bazaar buying price.
  *
- * Two ways to run. Served by Apps Script: the template fills in the key and the data (BOOT), so the page draws at
- * once, and calls go through google.script.run. The copy on GitHub Pages (build-app.sh) has these null: it calls
- * the web app over the network (api_ and doPost in Code.gs) and draws from the data it kept last time. The key is not
- * in that public copy: it is given once on the phone, in the link (#k=...) or pasted in, and kept there.
+ * The data lives in Supabase (supabase/ in this repo). The page signs in with e-mail and password and calls the
+ * api_* functions (supabase.rpc). config.js holds the project's address and its public (anon) key; what a user may
+ * see is decided by the database (row level security), not by this page. The data seen last is kept on the phone,
+ * so the page draws at once and refreshes afterwards.
  */
-const KEY = null;   // printed as a JavaScript string by the template's escaping
-const ASSETS_IN = null;
-const BOOT = null;
-const IN_GAS = typeof google !== 'undefined' && !!google.script;
-const WEB_APP = "https://script.google.com/macros/s/AKfycbzARQ5GRbQ19IihSySA3YHISRFnF5Ksx304eq6vVEVj1JZORVzZ8XiA-7ypy4F_oKEv3Q/exec";   // the GitHub Pages copy: the web app's address (build-app.sh); not secret without the key
-
-/** The web app's address and key from the key alone, the app's link (#k=..., #u=...&k=...) or the web app's (.../exec?k=...). */
-function parseConn(text) {
-  text = String(text || '').trim();
-  if (/^[0-9a-f]{32}$/i.test(text)) return WEB_APP ? { url: WEB_APP, key: text } : null;
-  try {
-    const u = new URL(text), h = new URLSearchParams(u.hash.slice(1));
-    const c = h.get('k') ? { url: h.get('u') || WEB_APP, key: h.get('k') } : { url: u.origin + u.pathname, key: u.searchParams.get('k') };
-    return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(c.url) && c.key ? c : null;
-  } catch (e) {
-    return null;
-  }
-}
-let CONN = IN_GAS ? null : parseConn(location.href) || load('conn');
-if (CONN) store('conn', CONN);
+const CFG = window.BIRIKIM || {};
+const CONFIGURED = typeof supabase !== 'undefined' && /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(CFG.url || '') &&
+  !!CFG.anonKey && CFG.anonKey.indexOf('YOUR-') !== 0;
+const SB = CONFIGURED ? supabase.createClient(CFG.url, CFG.anonKey,
+  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }) : null;
+let SESSION;   // undefined: not known yet, null: signed out
 
 let ASSETS = [];
 const A = {};
@@ -306,7 +297,7 @@ function setAssets(list) {
   ASSETS = list || [];
   ASSETS.forEach(a => { A[a.code] = a; });
 }
-setAssets(ASSETS_IN || load('assets'));
+setAssets(load('assets'));
 const MON = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const MONL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const TITLES = { ozet: 'Güneş Ailesi', grafik: 'Grafikler', islem: 'İşlemler', varlik: 'Varlıklar' };
@@ -387,56 +378,55 @@ function store(k, v) { try { localStorage.setItem('birikim.' + k, JSON.stringify
 // ---- state and server -------------------------------------------------------------------------
 
 const S = {
-  data: BOOT || load('boot'), prices: null, history: load('history'), historyError: '',
+  data: load('boot'), prices: null, history: load('history'), historyError: '',
   tab: TITLES[load('tab')] ? load('tab') : 'ozet', range: load('range') || '12', alloc: 'asset', filter: 'all',
-  pick: null, busy: 0, pricing: false, refreshed: 0,
+  pick: null, busy: 0, pricing: false, refreshed: 0, back: null,
 };
 S.prices = S.data && S.data.prices;
 
 function call(fn, ...args) {
   S.busy++;
   spin();
-  const done = IN_GAS
-    ? new Promise((ok, fail) => google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](KEY, ...args))
-    : remote(fn, args);
-  return done.finally(() => { S.busy--; spin(); });
+  return remote(fn, args).finally(() => { S.busy--; spin(); });
 }
 
-/** The same calls over the network: reads as GET, changes as POST in text/plain (no CORS preflight). */
-const ROUTES = {
-  apiBoot: () => ({ api: 'boot' }),
-  apiPrices: () => ({ api: 'prices' }),
-  apiHistory: () => ({ api: 'history' }),
-  apiPriceAt: (code, date) => ({ api: 'priceAt', code: code, date: date }),
-  apiAdd: tx => ({ api: 'add', tx: tx, post: true }),
-  apiDelete: row => ({ api: 'delete', row: row, post: true }),
+/** The calls the page makes, as the database functions of supabase/migrations/0002_logic.sql. */
+const RPC = {
+  apiBoot: () => ['api_boot', {}],
+  apiPrices: () => ['api_prices', {}],
+  apiHistory: () => ['api_history', {}],
+  apiPriceAt: (code, date) => ['api_price_at', { p_code: code, p_date: date }],
+  apiAdd: tx => ['api_add', { p_tx: tx }],
+  apiDelete: id => ['api_delete', { p_id: id }],
+  apiValueAt: date => ['api_value_at', { p_date: date }],
 };
+const OFFLINE = 'Sunucuya ulaşılamadı, internet bağlantını kontrol et';
 
 function remote(fn, args) {
-  if (!CONN) return Promise.reject(new Error('Bağlantı yok'));
-  const p = Object.assign({ k: CONN.key }, ROUTES[fn].apply(null, args)), post = p.post;
-  delete p.post;
-  const req = post
-    ? fetch(CONN.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) })
-    : fetch(CONN.url + '?' + new URLSearchParams(p));
-  return req.then(r => r.json().catch(() => { throw new Error('Sunucu beklenmedik bir cevap verdi'); }),
-    () => { throw new Error('Sunucuya ulaşılamadı, internet bağlantını kontrol et'); })
-    .then(d => {
-      if (d && d.error === 'unauthorized') {
-        forget();
-        throw new Error('Anahtar kabul edilmedi');
+  if (!SB || !SESSION) return Promise.reject(new Error('Giriş yapılmamış'));
+  const call = RPC[fn].apply(null, args);
+  return SB.rpc(call[0], call[1]).then(res => {
+    if (res.error) {
+      const e = res.error, text = String(e.message || '');
+      if (e.code === 'PGRST301' || e.code === 'PGRST303' || /jwt/i.test(text)) {
+        signedOut();
+        throw new Error('Oturum süresi doldu, yeniden giriş yap');
       }
-      if (d && d.error) throw new Error(d.error);
-      if (fn === 'apiBoot' && !d.transactions) throw new Error("Apps Script'te yeni sürüm dağıtılmamış");
-      return d;
-    });
+      if (/fetch|network|load failed/i.test(text)) throw new Error(OFFLINE);
+      throw new Error(text || 'Hata');
+    }
+    return res.data;
+  }, () => { throw new Error(OFFLINE); });
 }
 
-/** Back to the connect screen (wrong key). */
-function forget() {
-  CONN = null;
-  store('conn', null);
+/** Back to the sign-in screen: signed out, or the session ran out. The data kept on the phone is cleared. */
+function signedOut() {
+  SESSION = null;
+  store('boot', null);
+  store('history', null);
   S.data = null;
+  S.history = null;
+  S.prices = null;
   render();
 }
 const msg = e => String((e && e.message) || e || 'Hata').replace(/^(Exception|Error|ScriptError):\s*/, '');
@@ -450,7 +440,7 @@ function setData(d) {
   }
   S.data = d;
   S.prices = newer(S.prices, d.prices);
-  if (!IN_GAS) store('boot', Object.assign({}, d, { prices: S.prices }));
+  store('boot', Object.assign({}, d, { prices: S.prices }));
 }
 
 function refreshPrices() {
@@ -472,7 +462,7 @@ function loadHistory() {
 
 /** Everything again: data, prices, history. Failures say so once. */
 function refreshAll(withData) {
-  if (!IN_GAS && !CONN) return;
+  if (!SB || !SESSION) return;
   S.refreshed = Date.now();
   const jobs = [refreshPrices(), loadHistory()];
   if (withData) jobs.unshift(call('apiBoot').then(d => { setData(d); render(); }));
@@ -527,8 +517,10 @@ function months() {
 // ---- rendering --------------------------------------------------------------------------------
 
 function render() {
-  document.body.classList.toggle('setup', !IN_GAS && !CONN);
-  if (!IN_GAS && !CONN) { renderConnect(); return; }
+  const out = !SB || SESSION === null;
+  document.body.classList.toggle('setup', out);
+  if (out) { renderConnect(); renderAcct(); return; }
+  renderAcct();
   renderHeader();
   ({ ozet: renderOzet, grafik: renderGrafik, islem: renderIslem, varlik: renderVarlik })[S.tab]();
 }
@@ -563,30 +555,53 @@ function renderHeader() {
   $('sub').innerHTML = `<i class="dot ${fresh ? 'ok' : ''}"></i>${text}`;
 }
 
-/** Outside Apps Script, the first time: where the web app is. */
+/** Signed out (or the page is not set up): the sign-in screen. */
 function renderConnect() {
   $('title').textContent = TITLES.ozet;
   $('sub').textContent = '';
-  if ($('conn')) return;
-  $('v-' + S.tab).innerHTML = `<div class="connect"><div class="ico" style="display:grid;place-items:center">${LOGO}</div>
-    <b>Hoş geldin</b>
-    <p>Birikim anahtarını ya da sana verilen bağlantı linkini yapıştır.</p>
-    <div class="input"><input id="conn" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Anahtar ya da link"></div>
-    <div class="err" id="connErr" style="margin-top:10px"></div>
-    <button class="primary" id="connect" style="margin-top:14px">Bağlan</button></div>`;
-}
-
-function connect() {
-  const c = parseConn($('conn').value);
-  if (!c) {
-    $('connErr').textContent = 'Tanınmadı: 32 karakterlik anahtarı ya da linkin tamamını yapıştır.';
+  if ($('lEmail') || $('cfgErr')) return;
+  const el = $('v-' + S.tab);
+  if (!SB) {
+    el.innerHTML = `<div class="connect"><div class="ico" style="display:grid;place-items:center">${LOGO}</div>
+      <b id="cfgErr">Uygulama ayarlı değil</b>
+      <p>config.js dosyasında Supabase adresi ve anahtarı yazılı olmalı${typeof supabase === 'undefined' ? ' (Supabase kütüphanesi de yüklenemedi, internet bağlantını kontrol et)' : ''}.</p></div>`;
     return;
   }
-  CONN = c;
-  store('conn', c);
-  S.data = null;
-  render();
-  refreshAll(true);
+  el.innerHTML = `<div class="connect"><div class="ico" style="display:grid;place-items:center">${LOGO}</div>
+    <b>Hoş geldin</b>
+    <p>E-posta ve şifrenle giriş yap.</p>
+    <label class="field"><span>E-posta</span><div class="input"><input id="lEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false"></div></label>
+    <label class="field"><span>Şifre</span><div class="input"><input id="lPass" type="password" autocomplete="current-password"></div></label>
+    <div class="err" id="connErr"></div>
+    <button class="primary" id="login">Giriş yap</button></div>`;
+}
+
+const AUTH_ERRORS = { invalid_credentials: 'E-posta ya da şifre yanlış', email_not_confirmed: 'E-posta henüz onaylanmamış',
+  over_request_rate_limit: 'Çok fazla deneme, biraz bekle', over_email_send_rate_limit: 'Çok fazla deneme, biraz bekle' };
+
+function login() {
+  const email = $('lEmail').value.trim(), password = $('lPass').value, err = $('connErr'), btn = $('login');
+  if (!email || !password) { err.textContent = 'E-posta ve şifreyi yaz.'; return; }
+  err.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Giriş yapılıyor…';
+  SB.auth.signInWithPassword({ email: email, password: password }).then(res => {
+    if (res.error) throw res.error;
+    SESSION = res.data.session;
+    S.data = null;
+    render();
+    refreshAll(true);
+  }).catch(e => {
+    err.textContent = AUTH_ERRORS[e.code] || (/fetch|network|load failed/i.test(String(e.message)) ? OFFLINE : 'Giriş yapılamadı');
+    btn.disabled = false;
+    btn.textContent = 'Giriş yap';
+  });
+}
+
+/** Under every screen: who is signed in, and signing out. */
+function renderAcct() {
+  const el = $('acct'), email = SESSION && SESSION.user && SESSION.user.email;
+  el.innerHTML = SESSION ? `${esc(email || '')}${email ? ' · ' : ''}<button class="link" id="signout">Çıkış yap</button>` : '';
 }
 
 const skeleton = heights => heights.map(h => `<div class="skel" style="height:${h}px;margin-top:12px"></div>`).join('');
@@ -604,7 +619,7 @@ function seg(name, options, on, wide) {
 
 function txRow(t) {
   const k = KIND[t.kind], a = A[t.code] || { name: t.name, unit: '' }, amount = t.qty * t.price;
-  return `<button class="row" data-tx="${t.row}">
+  return `<button class="row" data-tx="${esc(t.id)}">
     <div class="ico" style="background:${alpha(k.c, .15)};color:${k.c}">${icon(k.icon)}</div>
     <div class="t"><b>${esc(a.name)}</b><span>${t.kind} · ${dShort(t.date)}</span></div>
     <div class="r"><b>${amount ? tl(amount) : '—'}</b><span style="color:${k.c}">${k.in ? '+' : '−'}${qty(t.qty, a.unit)}</span></div>
@@ -636,6 +651,11 @@ function renderOzet() {
       <div class="card-h"><h3>Dağılım</h3>${seg('alloc', [['asset', 'Varlık'], ['group', 'Tür']], S.alloc)}</div>
       <div class="alloc"><div class="donut" id="donut"></div><div class="legend" id="legend"></div></div>
     </div>` : ''}
+    <div class="card">
+      <div class="card-h"><h3>Geçmiş fiyatla değer</h3></div>
+      <p class="muted" style="margin:0 0 12px;font-size:13.5px">Elindekiler, seçeceğin bir günün fiyatıyla kaç ₺ ederdi?</p>
+      <button class="primary" data-back="" style="height:46px;font-size:15px;margin-top:0">Tarih seç</button>
+    </div>
     ${priced.length ? `<div class="card">
       <div class="card-h"><h3>Fiyatlar</h3><span class="faint" style="font-size:12.5px">alış · satış</span></div>
       ${priced.map(it => `<div class="row">
@@ -720,7 +740,7 @@ function renderGrafik() {
       ${ms.slice().reverse().map(m => `<tr><td>${mShort(m.month, true)}</td><td>${nf0.format(m.value)}</td><td>${nf0.format(m.cost)}</td>
         <td class="${cls(m.value - m.cost)}">${sign(m.value - m.cost)}${nf0.format(Math.abs(m.value - m.cost))}</td></tr>`).join('')}
       </tbody></table></div>
-    <p class="foot">Her ay, o ayın son günündeki değerdir (bu ay: şimdi). ${S.history.approx ? 'Geçmiş altın değerleri yaklaşıktır: bugünkü Kapalıçarşı fiyatı o günkü ons ve dolar kuruyla ölçeklenir. ' : ''}Döviz: TCMB efektif alış kuru.</p>`;
+    <p class="foot">Her ay, o ayın son günündeki değerdir (bu ay: şimdi). ${S.history.approx ? 'Bazı geçmiş fiyatlar tahmindir (21 Mayıs 2026 öncesinde gram dışındaki altın türleri ve gümüş). ' : ''}Döviz: TCMB efektif alış kuru.</p>`;
 
   let i = ms.findIndex(m => m.month === S.pick);
   if (i < 0) i = ms.length - 1;
@@ -920,8 +940,8 @@ const sheetTop = (ico, color, title, sub) => `<div class="handle" data-close></d
   ${ico ? `<div class="ico" style="background:${alpha(color, .15)};color:${color}">${icon(ico, 22)}</div>` : ''}
   <h2>${title}${sub ? `<small>${sub}</small>` : ''}</h2><button class="close" data-close aria-label="Kapat">${icon('close', 16)}</button></div>`;
 
-function openTx(row) {
-  const t = S.data.transactions.find(x => x.row === row);
+function openTx(id) {
+  const t = S.data.transactions.find(x => x.id === id);
   if (!t) return;
   const k = KIND[t.kind], a = A[t.code] || { name: t.name, unit: '' };
   openSheet(`${sheetTop(k.icon, k.c, esc(a.name), t.kind + ' · ' + dLong(t.date))}
@@ -932,10 +952,10 @@ function openTx(row) {
       ${t.note ? `<div><span>Not</span><b>${esc(t.note)}</b></div>` : ''}
     </div>
     <div class="err" id="dErr"></div>
-    <button class="danger" id="del" data-row="${t.row}">İşlemi sil</button>`);
+    <button class="danger" id="del" data-id="${esc(t.id)}">İşlemi sil</button>`);
 }
 
-/** Deleting asks for a second tap, as the row leaves the spreadsheet for good. */
+/** Deleting asks for a second tap, as the transaction is gone for good. */
 function deleteTx(btn) {
   if (!btn.classList.contains('sure')) {
     btn.classList.add('sure');
@@ -944,7 +964,7 @@ function deleteTx(btn) {
   }
   btn.disabled = true;
   btn.textContent = 'Siliniyor…';
-  call('apiDelete', Number(btn.dataset.row)).then(d => {
+  call('apiDelete', btn.dataset.id).then(d => {
     setData(d);
     closeSheet();
     toast('İşlem silindi');
@@ -1084,6 +1104,77 @@ function saveTx() {
     });
 }
 
+// Geçmiş fiyatla değer: what is held now, at the prices of a past day (api_value_at).
+
+const BACK_CHIPS = [['1', '1 ay'], ['3', '3 ay'], ['6', '6 ay'], ['12', '1 yıl'], ['24', '2 yıl']];
+
+/** The date n months back as yyyy-mm-dd (the last day of a shorter month when the day does not exist there). */
+function monthsAgo(n) {
+  const t = new Date(), m = t.getMonth() - n, y = t.getFullYear() + Math.floor(m / 12), mm = ((m % 12) + 12) % 12;
+  return y + '-' + pad2(mm + 1) + '-' + pad2(Math.min(t.getDate(), new Date(y, mm + 1, 0).getDate()));
+}
+
+function openBack() {
+  if (!S.back) S.back = { date: monthsAgo(12), chip: '12', data: null, loading: false, error: '', seq: 0 };
+  openSheet(`${sheetTop('grafik', '#F5C451', 'Geçmiş fiyatla değer', 'Elindekiler o gün kaç ₺ ederdi?')}
+    <div class="chips" id="bChips" style="margin-bottom:12px">${BACK_CHIPS.map(c =>
+      `<button class="chip ${c[0] === S.back.chip ? 'on' : ''}" data-bk="${c[0]}">${c[1]} önce</button>`).join('')}</div>
+    <label class="field"><span>Tarih</span><div class="input"><input id="bDate" type="date" value="${S.back.date}" max="${todayStr()}"></div></label>
+    <div id="bRes"></div>`);
+  $('bDate').addEventListener('change', () => {
+    S.back.chip = '';
+    document.querySelectorAll('#bChips .chip').forEach(b => b.classList.remove('on'));
+    loadBack($('bDate').value);
+  });
+  if (S.back.data) renderBack(); else loadBack(S.back.date);
+}
+
+function pickBack(n) {
+  S.back.chip = n;
+  document.querySelectorAll('#bChips .chip').forEach(b => b.classList.toggle('on', b.dataset.bk === n));
+  $('bDate').value = monthsAgo(Number(n));
+  loadBack($('bDate').value);
+}
+
+function loadBack(date) {
+  const b = S.back, seq = ++b.seq;
+  if (!date) return;
+  b.date = date;
+  b.error = '';
+  b.loading = true;
+  renderBack();
+  call('apiValueAt', date).then(d => {
+    if (seq === b.seq) b.data = d;
+  }, e => {
+    if (seq === b.seq) { b.data = null; b.error = msg(e); }
+  }).finally(() => {
+    if (seq !== b.seq) return;
+    b.loading = false;
+    renderBack();
+  });
+}
+
+function renderBack() {
+  const el = $('bRes'), b = S.back;
+  if (!el || !b) return;
+  if (b.error) { el.innerHTML = `<div class="err">${esc(b.error)}</div>`; return; }
+  const d = b.data;
+  if (!d) { el.innerHTML = skeleton([110, 150]); return; }
+  el.innerHTML = `<div style="${b.loading ? 'opacity:.45;transition:opacity .2s' : ''}">
+    <div class="ch-head"><div class="m">${dLong(d.date)} fiyatlarıyla</div><div class="v">${tl(d.then_total)}</div>
+      <div class="d">bugün ${tl(d.now_total)} · <span class="${cls(d.diff)}">${stl(d.diff)} · ${pct(d.pct)}</span></div></div>
+    ${d.gram && d.gram.then && d.gram.now ? `<div class="kv">
+      <div><span>Gram altın, o gün</span><b>${tl(d.gram.then, 2)}</b></div>
+      <div><span>Gram altın, bugün</span><b>${tl(d.gram.now, 2)}</b></div></div>` : ''}
+    <div class="sec">Varlık varlık</div>
+    <div class="list">${d.items.map(it => `<div class="row">
+      <div class="t"><b>${esc(it.name)}</b><span>${qty(it.qty, it.unit)} × ${tl(it.then_price, 2)}${it.estimated ? ' · yaklaşık' : ''}</span></div>
+      <div class="r"><b>${tl(it.then_value)}</b><span>bugün ${tl(it.now_value)}</span></div></div>`).join('')}</div>
+    ${d.skipped.length ? `<p class="foot">O gün fiyatı olmadığı için dışarıda kaldı: ${d.skipped.map(x => esc(x.name)).join(', ')}.</p>` : ''}
+    <p class="foot">Şu an elindeki miktarlar, o günün alış fiyatıyla çarpıldı; o günden sonra aldığın ya da sattığın bir şey bunu etkilemez.${d.approx
+      ? ' "Yaklaşık" yazanlar tahmindir: 21 Mayıs 2026 öncesinde gram dışındaki altın türleri ve gümüş, gram altına oranından hesaplandı.' : ''}</p></div>`;
+}
+
 // ---- wiring -----------------------------------------------------------------------------------
 
 let toastTimer = 0;
@@ -1096,13 +1187,15 @@ function toast(text, bad) {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-close],[data-tab],[data-add],[data-tx],[data-hold],[data-seg],[data-kind],[data-pick],[data-act],#del,#fSave,#refresh,#connect');
+  const t = e.target.closest('[data-close],[data-tab],[data-add],[data-tx],[data-hold],[data-seg],[data-kind],[data-pick],[data-act],[data-back],[data-bk],#del,#fSave,#refresh,#login,#signout');
   if (!t) return;
   const d = t.dataset;
   if ('close' in d) closeSheet();
   else if (d.tab) { closeSheet(); go(d.tab); }
   else if ('add' in d) openAdd(d.add);
-  else if (d.tx) openTx(Number(d.tx));
+  else if (d.tx) openTx(d.tx);
+  else if ('back' in d) openBack();
+  else if (d.bk) pickBack(d.bk);
   else if (d.hold) openHolding(d.hold);
   else if (d.seg) {
     const kv = d.seg.split(':');
@@ -1125,7 +1218,15 @@ document.addEventListener('click', e => {
   } else if (t.id === 'del') deleteTx(t);
   else if (t.id === 'fSave') saveTx();
   else if (t.id === 'refresh' && !S.busy) refreshAll(true);
-  else if (t.id === 'connect') connect();
+  else if (t.id === 'login') login();
+  else if (t.id === 'signout') SB.auth.signOut().catch(() => {}).finally(signedOut);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.target.id === 'lEmail' || e.target.id === 'lPass')) {
+    e.preventDefault();
+    if (e.target.id === 'lEmail') $('lPass').focus(); else login();
+  }
 });
 
 // Back from the background after a while (a home-screen app stays open for days): fetch again.
@@ -1146,7 +1247,15 @@ $('mark').innerHTML = LOGO;
 document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + S.tab));
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
 render();
-refreshAll(!BOOT);
+if (SB) {
+  // The session is kept by the library; it is read once, then the page refreshes itself.
+  SB.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT' && SESSION) signedOut(); });
+  SB.auth.getSession().then(res => {
+    SESSION = res.data && res.data.session || null;
+    render();
+    refreshAll(true);
+  }, () => { SESSION = null; render(); });
+}
 </script>
 </body>
 </html>

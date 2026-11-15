@@ -1,0 +1,9 @@
+project_id = "birikim"
+
+# The two functions are not called by a signed-in user: fetch-prices by pg_cron (x-cron-secret) and tv-holdings by
+# the TV (its own token). Each checks its secret itself.
+[functions.fetch-prices]
+verify_jwt = false
+
+[functions.tv-holdings]
+verify_jwt = false

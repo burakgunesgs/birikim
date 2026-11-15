@@ -1,0 +1,12 @@
+{
+  "name": "birikim",
+  "private": true,
+  "description": "Güneş Ailesi: phone app for a family's gold and currency savings. The data is in Supabase (supabase/).",
+  "scripts": {
+    "test": "node tests/db.test.mjs && node tests/ui.test.mjs && node --test --experimental-strip-types supabase/functions/fetch-prices/feed.test.mjs && node --test supabase/admin/sheet-to-sql.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "jsdom": "31.0.1"
+  }
+}
