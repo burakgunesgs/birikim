@@ -142,7 +142,7 @@ await until(() => d.querySelectorAll('#v-islem .row').length === 4, 'back to 4 r
 console.log('6b. geçmiş fiyatla değer');
 click(d.querySelector('[data-tab=ozet]'));
 await until(() => d.querySelector('#v-ozet [data-back]'), 'the card on Özet');
-ok(text('v-ozet').includes('Geçmiş fiyatla değer'), 'card text');
+ok(text('v-ozet').includes('Fiyat senaryoları') && text('v-ozet').includes('Fiyat simülasyonu') && text('v-ozet').includes('Geçmiş bir gün'), 'card text');
 click(d.querySelector('#v-ozet [data-back]'));
 await until(() => $('bRes') && text('bRes').includes('fiyatlarıyla'), 'result for the default (1 yıl önce)');
 ok($('bDate').value === (function () { const t = new Date(); return (t.getFullYear() - 1) + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); })()
@@ -160,6 +160,32 @@ ok(text('bRes').includes('yaklaşık') || !text('bRes').includes('Yaklaşık') |
 $('bDate').value = '2020-01-01'; $('bDate').dispatchEvent(new w.Event('change'));
 await until(() => text('bRes').includes('başlıyor'), 'error before the history');
 ok(text('bRes').includes('15.11.2024 tarihinden başlıyor'), 'error text: ' + text('bRes'));
+click(d.querySelector('#sheet .close'));
+await sleep(50);
+
+console.log('6c. fiyat simülasyonu');
+await until(() => d.querySelector('#v-ozet [data-sim]'), 'simulation button');
+click(d.querySelector('#v-ozet [data-sim]'));
+await until(() => $('sGram') && text('sRes').includes('Bu fiyatlarla toplam değer'), 'simulation sheet');
+ok($('sGram').value === '6.279,53', 'gram field starts at the live price: ' + $('sGram').value);
+const fmt0 = n => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(n) + ' ₺';
+const hold = w.eval("book().items.map(i => ({ g: i.group, c: i.code, v: i.value, priced: i.code === 'TRY' || !!(i.p && i.p.buy) }))");
+const total = (fg, fu) => hold.reduce((t, i) => t + i.v * (!i.priced ? 1 : (i.g === 'Altın' || i.c === 'GUMUS') ? fg : i.g === 'Döviz' ? fu : 1), 0);
+ok(text('sRes').includes(fmt0(total(1, 1))) && text('sRes').includes('şimdi ' + fmt0(total(1, 1))), 'no change: the total is what it is now: ' + text('sRes').slice(0, 90));
+$('sGram').value = '8000'; $('sGram').dispatchEvent(new w.Event('input'));
+const want = total(8000 / 6279.53, 1);
+ok(text('sRes').includes(fmt0(want)) && want > total(1, 1), `gram 8.000: total ${fmt0(want)} in: ` + text('sRes').slice(0, 110));
+ok(text('sRes').includes('Kâr / zarar, bu fiyatlarla') && d.querySelectorAll('#sRes .row').length === hold.length, 'a row per holding');
+click(d.querySelector('[data-sc="gram:10"]'));
+ok($('sGram').value === '6.907,48', 'chip +%10 fills the field: ' + $('sGram').value);
+ok(text('sRes').includes(fmt0(total(1.1, 1))), 'and the total follows');
+click(d.querySelector('[data-sc="usd:100"]'));
+ok($('sUsd').value === '100,72', 'dollar chip +%100: ' + $('sUsd').value);
+ok(text('sRes').includes(fmt0(total(1.1, 2))), 'dollar doubled moves the currencies only');
+$('sGram').value = 'abc'; $('sGram').dispatchEvent(new w.Event('input'));
+ok(text('sRes') === 'Geçerli bir fiyat yaz.', 'bad price: ' + text('sRes'));
+$('sGram').value = '8.000'; $('sUsd').value = ''; $('sUsd').dispatchEvent(new w.Event('input'));
+ok(text('sRes').includes(fmt0(total(8000 / 6279.53, 1))), 'thousands dot: 8.000 is 8000; empty dollar = unchanged');
 click(d.querySelector('#sheet .close'));
 await sleep(50);
 

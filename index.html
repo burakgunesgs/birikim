@@ -242,6 +242,8 @@
   .connect b { display: block; font-size: 20px; margin-bottom: 6px; }
   .connect p { color: var(--muted); margin: 0 0 18px; }
   .connect code { color: var(--text); font: inherit; font-size: 13px; word-break: break-all; }
+  .ghost { height: 46px; border-radius: 14px; background: var(--card2); color: var(--gold); font-weight: 700; font-size: 14.5px; text-align: center; }
+  .ghost:active { transform: scale(.97); }
   .acct { text-align: center; margin: 28px 0 0; font-size: 12.5px; color: var(--faint); }
   .acct .link { font-size: 12.5px; }
 </style>
@@ -380,7 +382,7 @@ function store(k, v) { try { localStorage.setItem('birikim.' + k, JSON.stringify
 const S = {
   data: load('boot'), prices: null, history: load('history'), historyError: '',
   tab: TITLES[load('tab')] ? load('tab') : 'ozet', range: load('range') || '12', alloc: 'asset', filter: 'all',
-  pick: null, busy: 0, pricing: false, refreshed: 0, back: null,
+  pick: null, busy: 0, pricing: false, refreshed: 0, back: null, sim: null,
 };
 S.prices = S.data && S.data.prices;
 
@@ -652,9 +654,12 @@ function renderOzet() {
       <div class="alloc"><div class="donut" id="donut"></div><div class="legend" id="legend"></div></div>
     </div>` : ''}
     <div class="card">
-      <div class="card-h"><h3>Geçmiş fiyatla değer</h3></div>
-      <p class="muted" style="margin:0 0 12px;font-size:13.5px">Elindekiler, seçeceğin bir günün fiyatıyla kaç ₺ ederdi?</p>
-      <button class="primary" data-back="" style="height:46px;font-size:15px;margin-top:0">Tarih seç</button>
+      <div class="card-h"><h3>Fiyat senaryoları</h3></div>
+      <p class="muted" style="margin:0 0 12px;font-size:13.5px">Elindekiler başka bir fiyatla kaç ₺ ederdi?</p>
+      <div class="two">
+        <button class="ghost" data-sim="">Fiyat simülasyonu</button>
+        <button class="ghost" data-back="">Geçmiş bir gün</button>
+      </div>
     </div>
     ${priced.length ? `<div class="card">
       <div class="card-h"><h3>Fiyatlar</h3><span class="faint" style="font-size:12.5px">alış · satış</span></div>
@@ -1175,6 +1180,78 @@ function renderBack() {
       ? ' "Yaklaşık" yazanlar tahmindir: 21 Mayıs 2026 öncesinde gram dışındaki altın türleri ve gümüş, gram altına oranından hesaplandı.' : ''}</p></div>`;
 }
 
+// Fiyat simülasyonu: what is held now if gram gold, or the dollar, were at a price typed in. Worked out here (no call).
+// Every gold kind and silver move with gram gold, every currency with the dollar, TRY stays; a holding that has no
+// price now stays as it is (the app counts it at cost).
+
+function simulate(gram, usd) {
+  const b = book(), P = S.prices || {}, g = P.GRA && P.GRA.buy, u = P.USD && P.USD.buy;
+  const fg = g && gram > 0 ? gram / g : 1, fu = u && usd > 0 ? usd / u : 1;
+  const items = b.items.map(it => {
+    const priced = it.code === 'TRY' || !!(it.p && it.p.buy);
+    const f = !priced ? 1 : it.group === 'Altın' || it.code === 'GUMUS' ? fg : it.group === 'Döviz' ? fu : 1;
+    return { it: it, factor: f, value: it.value * f, price: priced && it.p ? it.p.buy * f : null };
+  });
+  const value = items.reduce((t, x) => t + x.value, 0);
+  return { items: items, value: value, now: b.value, cost: b.cost, gainNow: b.gain, gain: value - b.cost, fg: fg, fu: fu };
+}
+
+const SIM_CHIPS = [-10, 10, 25, 50, 100];
+
+function openSim() {
+  const P = S.prices || {}, g = P.GRA && P.GRA.buy, u = P.USD && P.USD.buy;
+  if (!S.sim) S.sim = { gram: g ? nf2.format(g) : '', usd: u ? nf2.format(u) : '' };
+  const chips = k => `<div class="chips" style="margin:-4px 0 10px">${SIM_CHIPS.map(c =>
+    `<button class="chip" data-sc="${k}:${c}">${c > 0 ? '+' : '−'}%${Math.abs(c)}</button>`).join('')}</div>`;
+  openSheet(`${sheetTop('grafik', '#F5C451', 'Fiyat simülasyonu', 'Gram altın ya da dolar şu olsaydı?')}
+    <div class="two">
+      <label class="field"><span>Gram altın</span><div class="input"><input id="sGram" inputmode="decimal" autocomplete="off" value="${S.sim.gram}"><em>₺</em></div></label>
+      <label class="field"><span>Dolar</span><div class="input"><input id="sUsd" inputmode="decimal" autocomplete="off" value="${S.sim.usd}"><em>₺</em></div></label>
+    </div>
+    <div class="hint">Şu an: gram altın ${g ? tl(g, 2) : '—'} · dolar ${u ? tl(u, 2) : '—'}</div>
+    <div class="sec" style="margin-top:4px">Gram altın şu kadar değişse</div>${chips('gram')}
+    <div class="sec" style="margin-top:0">Dolar şu kadar değişse</div>${chips('usd')}
+    <div id="sRes"></div>`);
+  $('sGram').addEventListener('input', renderSim);
+  $('sUsd').addEventListener('input', renderSim);
+  renderSim();
+}
+
+/** A chip: the price now moved by a percent, written into its field. */
+function simChip(kind, pctChange) {
+  const P = S.prices || {}, base = kind === 'gram' ? P.GRA && P.GRA.buy : P.USD && P.USD.buy;
+  if (!base) return;
+  $(kind === 'gram' ? 'sGram' : 'sUsd').value = nf2.format(base * (1 + pctChange / 100));
+  renderSim();
+}
+
+function renderSim() {
+  const el = $('sRes');
+  if (!el) return;
+  const gs = $('sGram').value.trim(), us = $('sUsd').value.trim();
+  const gram = gs ? parseNum(gs, true) : NaN, usd = us ? parseNum(us, true) : NaN;
+  S.sim = { gram: gs, usd: us };
+  if ((gs && !(gram > 0)) || (us && !(usd > 0))) { el.innerHTML = '<div class="err">Geçerli bir fiyat yaz.</div>'; return; }
+  if (!book().items.length) { el.innerHTML = '<div class="foot">Henüz kayıt yok.</div>'; return; }
+  const P = S.prices || {};
+  if ((gram > 0 && !(P.GRA && P.GRA.buy)) || (usd > 0 && !(P.USD && P.USD.buy))) {
+    el.innerHTML = '<div class="err">Şu anki fiyat alınamadı, biraz sonra tekrar dene.</div>';
+    return;
+  }
+  const r = simulate(gram, usd), diff = r.value - r.now;
+  el.innerHTML = `<div class="ch-head" style="margin-top:6px"><div class="m">Bu fiyatlarla toplam değer</div><div class="v">${tl(r.value)}</div>
+      <div class="d">şimdi ${tl(r.now)} · <span class="${cls(diff)}">${stl(diff)} · ${pct(r.now ? diff / r.now * 100 : 0)}</span></div></div>
+    <div class="kv">
+      <div><span>Maliyet</span><b>${tl(r.cost)}</b></div>
+      <div><span>Kâr / zarar, bu fiyatlarla</span><b class="${cls(r.gain)}">${stl(r.gain)} · ${pct(r.cost ? r.gain / r.cost * 100 : 0)}</b></div>
+      <div><span>Kâr / zarar, şimdi</span><b class="${cls(r.gainNow)}">${stl(r.gainNow)}</b></div></div>
+    <div class="sec">Varlık varlık</div>
+    <div class="list">${r.items.map(x => `<div class="row">
+      <div class="t"><b>${esc(x.it.name)}</b><span>${qty(x.it.qty, x.it.unit)}${x.price && x.factor !== 1 ? ' · ' + tl(x.it.p ? x.it.p.buy : 1, 2) + ' → ' + tl(x.price, 2) : x.price ? ' · ' + tl(x.price, 2) : ' · fiyat yok, maliyetle'}</span></div>
+      <div class="r"><b>${tl(x.value)}</b><span>şimdi ${tl(x.it.value)}</span></div></div>`).join('')}</div>
+    <p class="foot">Bu bir tahmindir. Tüm altın türleri ve gümüş gram altınla aynı oranda, döviz kurları dolarla aynı oranda değişir; TL aynı kalır. Alanlardan biri değişmezse o fiyat şimdikinde kalır. Gerçekte dolar yükselirse gram altının TL fiyatı da genelde yükselir; ikisini birlikte yazabilirsin.</p>`;
+}
+
 // ---- wiring -----------------------------------------------------------------------------------
 
 let toastTimer = 0;
@@ -1187,7 +1264,7 @@ function toast(text, bad) {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-close],[data-tab],[data-add],[data-tx],[data-hold],[data-seg],[data-kind],[data-pick],[data-act],[data-back],[data-bk],#del,#fSave,#refresh,#login,#signout');
+  const t = e.target.closest('[data-close],[data-tab],[data-add],[data-tx],[data-hold],[data-seg],[data-kind],[data-pick],[data-act],[data-back],[data-bk],[data-sim],[data-sc],#del,#fSave,#refresh,#login,#signout');
   if (!t) return;
   const d = t.dataset;
   if ('close' in d) closeSheet();
@@ -1195,6 +1272,8 @@ document.addEventListener('click', e => {
   else if ('add' in d) openAdd(d.add);
   else if (d.tx) openTx(d.tx);
   else if ('back' in d) openBack();
+  else if ('sim' in d) openSim();
+  else if (d.sc) { const kv = d.sc.split(':'); simChip(kv[0], Number(kv[1])); }
   else if (d.bk) pickBack(d.bk);
   else if (d.hold) openHolding(d.hold);
   else if (d.seg) {
